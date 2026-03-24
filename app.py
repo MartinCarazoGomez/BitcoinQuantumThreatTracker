@@ -13,10 +13,10 @@ CUSTOM_CSS = """
     /* Base */
     html, body, [class*="css"] { font-family: 'DM Sans', sans-serif !important; }
     
-    /* Main container */
+    /* Main container — extra bottom padding for fixed tab bar */
     .main .block-container { 
         padding-top: 2rem; 
-        padding-bottom: 3rem; 
+        padding-bottom: 6rem !important; 
         max-width: 1420px;
     }
     
@@ -350,6 +350,60 @@ CUSTOM_CSS = """
     }
     .landing-workflow li { margin-bottom: 0.35rem; }
     .landing-workflow li:last-child { margin-bottom: 0; }
+    
+    /* ========== App-style bottom tab bar (fixed) ========== */
+    .app-tabbar-trigger { display: none !important; }
+    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        margin: 0 auto !important;
+        padding: 0.35rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom, 0px)) !important;
+        background: rgba(10, 15, 26, 0.92) !important;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-top: 1px solid rgba(148, 163, 184, 0.2);
+        box-shadow: 0 -12px 40px -8px rgba(0, 0, 0, 0.55);
+        z-index: 1000;
+        gap: 0.15rem !important;
+    }
+    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] > div {
+        gap: 0.15rem !important;
+    }
+    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] button {
+        border-radius: 12px !important;
+        font-size: 0.7rem !important;
+        font-weight: 600 !important;
+        padding: 0.5rem 0.15rem !important;
+        min-height: 2.85rem !important;
+        line-height: 1.2 !important;
+        white-space: normal !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.1rem !important;
+        border: 1px solid rgba(148, 163, 184, 0.12) !important;
+        background: rgba(30, 41, 59, 0.5) !important;
+        color: #94a3b8 !important;
+    }
+    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] button:hover {
+        border-color: rgba(245, 158, 11, 0.35) !important;
+        color: #e2e8f0 !important;
+    }
+    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] button[kind="primary"],
+    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] button[data-testid="baseButton-primary"] {
+        background: linear-gradient(180deg, rgba(245, 158, 11, 0.22) 0%, rgba(245, 158, 11, 0.08) 100%) !important;
+        border-color: rgba(245, 158, 11, 0.45) !important;
+        color: #fef3c7 !important;
+    }
+    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] button p {
+        font-size: 0.68rem !important;
+        margin: 0 !important;
+    }
 </style>
 """
 
@@ -602,6 +656,33 @@ def apply_scenario_to_state(scenario):
     st.session_state["params"] = scenario_defaults(scenario).copy()
 
 
+def render_bottom_tabbar():
+    """Fixed bottom navigation — five tools, app-style (Simulator, Quick, News, Glossary, Timeline)."""
+    page = st.session_state.get("page", "home")
+    st.markdown('<div class="app-tabbar-trigger"></div>', unsafe_allow_html=True)
+    c1, c2, c3, c4, c5 = st.columns(5)
+    tabs = [
+        ("simulator", "tabbar_sim", "📊 Simulator"),
+        ("quick_check", "tabbar_quick", "⚡ Quick"),
+        ("news", "tabbar_news", "📰 News"),
+        ("glossary", "tabbar_gloss", "📖 Glossary"),
+        ("timeline", "tabbar_timeline", "📅 Timeline"),
+    ]
+    cols = [c1, c2, c3, c4, c5]
+    for i, (target, key, label) in enumerate(tabs):
+        with cols[i]:
+            is_active = page == target
+            if st.button(
+                label,
+                key=key,
+                use_container_width=True,
+                type="primary" if is_active else "secondary",
+            ):
+                if page != target:
+                    st.session_state["page"] = target
+                    st.rerun()
+
+
 def render_home():
     """Home / landing — clear hierarchy: pick a path, then reference tools."""
     st.markdown(
@@ -664,62 +745,16 @@ def render_home():
         <div class="landing-stats">
             <div class="landing-stat"><div class="landing-stat-num">3</div><div class="landing-stat-label">Scenario presets</div></div>
             <div class="landing-stat"><div class="landing-stat-num">30yr</div><div class="landing-stat-label">Horizon (2026–2055)</div></div>
-            <div class="landing-stat"><div class="landing-stat-num">5</div><div class="landing-stat-label">Tools in this app</div></div>
+            <div class="landing-stat"><div class="landing-stat-num">5</div><div class="landing-stat-label">Tools (see bar below)</div></div>
         </div>
-        <div class="landing-section-title">Reference &amp; context</div>
+        <div class="landing-section-title">Navigation</div>
+        <p style="text-align:center;color:#94a3b8;font-size:0.92rem;max-width:520px;margin:0 auto 0.5rem;line-height:1.55;">
+            Use the <strong style="color:#cbd5e1;">bottom bar</strong> to switch between Simulator, Quick Check, News, Glossary, and Timeline—like a native app.
+        </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
-
-    def _tile(emoji, title, desc, ref=False):
-        cls = "landing-tile landing-tile-ref" if ref else "landing-tile"
-        return (
-            f'<div class="{cls}"><div class="landing-tile-head">'
-            f'<span class="emoji">{emoji}</span><span>{title}</span></div>'
-            f'<p class="landing-tile-text">{desc}</p></div>'
-        )
-
-    n1, n2, n3 = st.columns(3)
-    with n1:
-        st.markdown(
-            _tile(
-                "📰",
-                "News & updates",
-                "Headlines and context on quantum hardware, NIST PQC, and Bitcoin migration discussions.",
-                ref=True,
-            ),
-            unsafe_allow_html=True,
-        )
-        if st.button("Browse news", use_container_width=True, key="nav_news"):
-            st.session_state["page"] = "news"
-            st.rerun()
-    with n2:
-        st.markdown(
-            _tile(
-                "📖",
-                "Glossary",
-                "ECDSA, hash-based and lattice schemes, soft fork concepts—plus pointers to standards.",
-                ref=True,
-            ),
-            unsafe_allow_html=True,
-        )
-        if st.button("Open glossary", use_container_width=True, key="nav_gloss"):
-            st.session_state["page"] = "glossary"
-            st.rerun()
-    with n3:
-        st.markdown(
-            _tile(
-                "📅",
-                "Timeline",
-                "Milestones in quantum computing and Bitcoin post-quantum exploration—past through projected.",
-                ref=True,
-            ),
-            unsafe_allow_html=True,
-        )
-        if st.button("View timeline", use_container_width=True, key="nav_timeline"):
-            st.session_state["page"] = "timeline"
-            st.rerun()
 
     st.markdown(
         """
@@ -727,7 +762,7 @@ def render_home():
         <div class="landing-workflow">
             <h4>Suggested workflow</h4>
             <ol>
-                <li><strong style="color:#cbd5e1;">Orient</strong> — Quick Check or read News / Timeline for context.</li>
+                <li><strong style="color:#cbd5e1;">Orient</strong> — Quick Check or News / Timeline (bottom bar).</li>
                 <li><strong style="color:#cbd5e1;">Model</strong> — Risk Simulator on <strong style="color:#cbd5e1;">Moderate</strong> preset, then tune sliders.</li>
                 <li><strong style="color:#cbd5e1;">Validate</strong> — Compare scenarios and Sensitivity tab; note any critical year.</li>
                 <li><strong style="color:#cbd5e1;">Share</strong> — Export CSV for slides or documentation.</li>
@@ -1254,7 +1289,7 @@ def main():
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
     init_state()
 
-    # Main content — no sidebar, nav via home cards
+    # Main content — no sidebar; bottom tab bar for primary navigation
     if st.session_state["page"] == "home":
         render_home()
     elif st.session_state["page"] == "simulator":
@@ -1267,6 +1302,8 @@ def main():
         render_glossary()
     elif st.session_state["page"] == "timeline":
         render_timeline()
+
+    render_bottom_tabbar()
 
 
 if __name__ == "__main__":
