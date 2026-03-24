@@ -265,6 +265,91 @@ CUSTOM_CSS = """
     .landing-footer p { margin: 0; font-size: 0.9rem; color: #94a3b8; line-height: 1.6; }
     /* Home primary CTA buttons */
     div[data-testid="column"] .landing-cta-row + div button { min-height: 2.75rem; }
+    
+    /* Hero action band — clear first step */
+    .landing-cta-band {
+        max-width: 640px;
+        margin: 0 auto 0.25rem;
+        padding: 0 0.5rem;
+    }
+    .landing-cta-band-inner {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    @media (max-width: 560px) {
+        .landing-cta-band-inner { grid-template-columns: 1fr; }
+    }
+    .landing-cta-pill {
+        text-align: left;
+        padding: 1rem 1.15rem 1.1rem;
+        border-radius: 16px;
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        background: rgba(15, 23, 42, 0.55);
+        transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .landing-cta-pill:hover { border-color: rgba(245, 158, 11, 0.22); background: rgba(15, 23, 42, 0.72); }
+    .landing-cta-pill-primary {
+        border-color: rgba(245, 158, 11, 0.28);
+        background: linear-gradient(165deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.75) 100%);
+        box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.06);
+    }
+    .landing-cta-kicker {
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        margin-bottom: 0.35rem;
+    }
+    .landing-cta-pill-primary .landing-cta-kicker { color: #fbbf24; }
+    .landing-cta-title {
+        font-size: 0.98rem;
+        font-weight: 700;
+        color: #f1f5f9;
+        margin: 0 0 0.35rem 0;
+        line-height: 1.25;
+    }
+    .landing-cta-desc {
+        font-size: 0.82rem;
+        color: #94a3b8;
+        margin: 0;
+        line-height: 1.45;
+    }
+    /* Reference tiles — slightly quieter than analysis picks */
+    .landing-tile-ref {
+        min-height: 100px;
+        padding: 1.15rem 1.25rem 0.95rem;
+    }
+    .landing-tile-ref .landing-tile-head { font-size: 0.98rem; }
+    .landing-workflow {
+        margin-top: 1.75rem;
+        padding: 1.25rem 1.5rem;
+        border-radius: 16px;
+        background: rgba(30, 41, 59, 0.4);
+        border: 1px dashed rgba(148, 163, 184, 0.2);
+        max-width: 900px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .landing-workflow h4 {
+        margin: 0 0 0.75rem 0;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+    .landing-workflow ol {
+        margin: 0;
+        padding-left: 1.25rem;
+        color: #94a3b8;
+        font-size: 0.88rem;
+        line-height: 1.65;
+    }
+    .landing-workflow li { margin-bottom: 0.35rem; }
+    .landing-workflow li:last-child { margin-bottom: 0; }
 </style>
 """
 
@@ -518,22 +603,21 @@ def apply_scenario_to_state(scenario):
 
 
 def render_home():
-    """Home / landing — professional app-style layout."""
+    """Home / landing — clear hierarchy: pick a path, then reference tools."""
     st.markdown(
         """
         <div class="landing-wrap">
         <div class="landing-hero">
             <div class="landing-badge">Decision intelligence · Scenario modeling</div>
-            <h1 class="landing-title">Bitcoin vs Quantum Threat</h1>
+            <h1 class="landing-title">Bitcoin Quantum Threat Toolkit</h1>
             <p class="landing-subtitle">
-                A professional decision-support workspace for the timing race between quantum capability
-                and post-quantum migration. Model scenarios, compare outcomes, and stress-test assumptions—
-                without treating forecasts as certainty.
+                See how quantum progress and post-quantum migration can drift out of sync—then stress-test
+                assumptions with charts, comparisons, and exports. Models illustrate scenarios, not predictions.
             </p>
             <div class="landing-meta">
-                <span><strong>Interactive</strong> charts & sensitivity</span>
+                <span><strong>Interactive</strong> charts &amp; sensitivity</span>
                 <span>·</span>
-                <span><strong>Explainable</strong> deadlines & verdicts</span>
+                <span><strong>Explainable</strong> deadlines &amp; verdicts</span>
                 <span>·</span>
                 <span><strong>Presentation-ready</strong> exports</span>
             </div>
@@ -543,110 +627,116 @@ def render_home():
         unsafe_allow_html=True,
     )
 
+    st.markdown('<div class="landing-section-title" style="margin-top:0.5rem;">Start here — pick one path</div>', unsafe_allow_html=True)
+    hero_l, hero_r = st.columns(2)
+    with hero_l:
+        st.markdown(
+            """
+            <div class="landing-cta-pill landing-cta-pill-primary">
+                <div class="landing-cta-kicker">Fast · Low friction</div>
+                <p class="landing-cta-title">Quick Risk Check</p>
+                <p class="landing-cta-desc">Four multiple-choice questions → an instant risk band. Best for a first read or a stakeholder snapshot.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.button("Start Quick Check", use_container_width=True, type="primary", key="nav_quick"):
+            st.session_state["page"] = "quick_check"
+            st.rerun()
+    with hero_r:
+        st.markdown(
+            """
+            <div class="landing-cta-pill">
+                <div class="landing-cta-kicker">Deep dive</div>
+                <p class="landing-cta-title">Risk Simulator</p>
+                <p class="landing-cta-desc">Sliders, three scenario presets, Plotly charts, compare runs, sensitivity sweeps, and CSV export.</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        if st.button("Open Risk Simulator", use_container_width=True, key="nav_sim"):
+            st.session_state["page"] = "simulator"
+            st.rerun()
+
     st.markdown(
         """
         <div class="landing-wrap">
         <div class="landing-stats">
             <div class="landing-stat"><div class="landing-stat-num">3</div><div class="landing-stat-label">Scenario presets</div></div>
             <div class="landing-stat"><div class="landing-stat-num">30yr</div><div class="landing-stat-label">Horizon (2026–2055)</div></div>
-            <div class="landing-stat"><div class="landing-stat-num">6</div><div class="landing-stat-label">Workspace modules</div></div>
+            <div class="landing-stat"><div class="landing-stat-num">5</div><div class="landing-stat-label">Tools in this app</div></div>
         </div>
-        <div class="landing-section-title">Choose a module</div>
+        <div class="landing-section-title">Reference &amp; context</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    def _tile(emoji, title, desc):
+    def _tile(emoji, title, desc, ref=False):
+        cls = "landing-tile landing-tile-ref" if ref else "landing-tile"
         return (
-            f'<div class="landing-tile"><div class="landing-tile-head">'
+            f'<div class="{cls}"><div class="landing-tile-head">'
             f'<span class="emoji">{emoji}</span><span>{title}</span></div>'
             f'<p class="landing-tile-text">{desc}</p></div>'
         )
 
-    r1a, r1b = st.columns(2)
-    with r1a:
-        st.markdown(
-            _tile(
-                "📊",
-                "Risk Simulator",
-                "Full scenario model: parameters, interactive Plotly charts, compare presets, sensitivity sweeps, CSV export.",
-            ),
-            unsafe_allow_html=True,
-        )
-        st.markdown('<div class="landing-cta-row"></div>', unsafe_allow_html=True)
-        if st.button("Open Risk Simulator", use_container_width=True, type="primary", key="nav_sim"):
-            st.session_state["page"] = "simulator"
-            st.rerun()
-    with r1b:
-        st.markdown(
-            _tile(
-                "⚡",
-                "Quick Risk Check",
-                "Four guided questions produce an instant risk band—ideal for a fast read before the full model.",
-            ),
-            unsafe_allow_html=True,
-        )
-        st.markdown('<div class="landing-cta-row"></div>', unsafe_allow_html=True)
-        if st.button("Open Quick Check", use_container_width=True, key="nav_quick"):
-            st.session_state["page"] = "quick_check"
-            st.rerun()
-
-    r2a, r2b = st.columns(2)
-    with r2a:
+    n1, n2, n3 = st.columns(3)
+    with n1:
         st.markdown(
             _tile(
                 "📰",
-                "News & Updates",
-                "Overview plus headline summaries with context on quantum progress, NIST PQC, and Bitcoin migration.",
+                "News & updates",
+                "Headlines and context on quantum hardware, NIST PQC, and Bitcoin migration discussions.",
+                ref=True,
             ),
             unsafe_allow_html=True,
         )
-        st.markdown('<div class="landing-cta-row"></div>', unsafe_allow_html=True)
-        if st.button("Open News", use_container_width=True, key="nav_news"):
+        if st.button("Browse news", use_container_width=True, key="nav_news"):
             st.session_state["page"] = "news"
             st.rerun()
-    with r2b:
+    with n2:
         st.markdown(
             _tile(
                 "📖",
-                "Glossary & Resources",
-                "Definitions for ECDSA, post-quantum schemes, and migration concepts—plus standards references.",
+                "Glossary",
+                "ECDSA, hash-based and lattice schemes, soft fork concepts—plus pointers to standards.",
+                ref=True,
             ),
             unsafe_allow_html=True,
         )
-        st.markdown('<div class="landing-cta-row"></div>', unsafe_allow_html=True)
-        if st.button("Open Glossary", use_container_width=True, key="nav_gloss"):
+        if st.button("Open glossary", use_container_width=True, key="nav_gloss"):
             st.session_state["page"] = "glossary"
             st.rerun()
-
-    r3a, r3b = st.columns(2)
-    with r3a:
+    with n3:
         st.markdown(
             _tile(
                 "📅",
                 "Timeline",
-                "Milestones across quantum advances and Bitcoin post-quantum exploration—past, present, and projected.",
+                "Milestones in quantum computing and Bitcoin post-quantum exploration—past through projected.",
+                ref=True,
             ),
             unsafe_allow_html=True,
         )
-        st.markdown('<div class="landing-cta-row"></div>', unsafe_allow_html=True)
-        if st.button("Open Timeline", use_container_width=True, key="nav_timeline"):
+        if st.button("View timeline", use_container_width=True, key="nav_timeline"):
             st.session_state["page"] = "timeline"
             st.rerun()
-    with r3b:
-        st.markdown(
-            _tile(
-                "ℹ️",
-                "Suggested workflow",
-                "Try Quick Check or Moderate preset → tune sliders → Compare & Sensitivity tabs → export CSV for slides.",
-            ),
-            unsafe_allow_html=True,
-        )
-        st.markdown('<div class="landing-cta-row"></div>', unsafe_allow_html=True)
-        if st.button("Start in Risk Simulator", use_container_width=True, key="nav_sim_start"):
-            st.session_state["page"] = "simulator"
-            st.rerun()
+
+    st.markdown(
+        """
+        <div class="landing-wrap">
+        <div class="landing-workflow">
+            <h4>Suggested workflow</h4>
+            <ol>
+                <li><strong style="color:#cbd5e1;">Orient</strong> — Quick Check or read News / Timeline for context.</li>
+                <li><strong style="color:#cbd5e1;">Model</strong> — Risk Simulator on <strong style="color:#cbd5e1;">Moderate</strong> preset, then tune sliders.</li>
+                <li><strong style="color:#cbd5e1;">Validate</strong> — Compare scenarios and Sensitivity tab; note any critical year.</li>
+                <li><strong style="color:#cbd5e1;">Share</strong> — Export CSV for slides or documentation.</li>
+            </ol>
+        </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown(
         """
