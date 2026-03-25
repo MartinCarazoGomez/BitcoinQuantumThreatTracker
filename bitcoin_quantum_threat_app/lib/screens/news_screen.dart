@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -11,6 +13,15 @@ const _kOverviewIbmQuantum = 'assets/images/overview_ibm_quantum.jpg';
 const _kOverviewNist = 'assets/images/overview_nist.jpg';
 const _kOverviewBitcoin = 'assets/images/overview_bitcoin.png';
 
+/// [Polymarket](https://polymarket.com/event/will-bitcoin-replace-sha-256-before-2027) event; odds from Gamma API.
+const _kPolymarketEventUrl = 'https://polymarket.com/event/will-bitcoin-replace-sha-256-before-2027';
+const _kPolymarketGammaUrl = 'https://gamma-api.polymarket.com/events?slug=will-bitcoin-replace-sha-256-before-2027';
+
+const _kHttpJsonHeaders = {
+  'User-Agent': 'BitcoinQuantumThreatToolkit/1.0 (Flutter; educational)',
+  'Accept': 'application/json',
+};
+
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
 
@@ -19,12 +30,94 @@ class NewsScreen extends StatefulWidget {
 }
 
 class _NewsScreenState extends State<NewsScreen> {
-  late Future<_NewsBundle> _future;
+  late Future<_NewsScreenData> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = _loadFeeds();
+    _future = _loadScreenData();
+  }
+
+  Future<_NewsScreenData> _loadScreenData() async {
+    final feedsFuture = _loadFeeds();
+    final polyFuture = _fetchPolymarket();
+    final bundle = await feedsFuture;
+    final poly = await polyFuture;
+    return _NewsScreenData(bundle: bundle, polymarket: poly.snap, polymarketError: poly.err);
+  }
+
+  Future<({_PolymarketSnapshot? snap, String? err})> _fetchPolymarket() async {
+    try {
+      final res = await http.get(Uri.parse(_kPolymarketGammaUrl), headers: _kHttpJsonHeaders);
+      if (res.statusCode != 200) {
+        return (snap: null, err: 'Polymarket API HTTP ${res.statusCode}');
+      }
+      final list = jsonDecode(res.body);
+      if (list is! List || list.isEmpty) {
+        return (snap: null, err: 'No market data returned');
+      }
+      final event = list.first;
+      if (event is! Map<String, dynamic>) {
+        return (snap: null, err: 'Unexpected API shape');
+      }
+      final markets = event['markets'];
+      if (markets is! List || markets.isEmpty) {
+        return (snap: null, err: 'Market listing empty');
+      }
+      final m = markets.first;
+      if (m is! Map<String, dynamic>) {
+        return (snap: null, err: 'Unexpected market shape');
+      }
+      final question = m['question'] as String? ?? 'Will Bitcoin replace SHA-256 before 2027?';
+      final outcomesRaw = m['outcomes'];
+      final pricesRaw = m['outcomePrices'];
+      final outcomes = outcomesRaw is String
+          ? jsonDecode(outcomesRaw) as List<dynamic>
+          : outcomesRaw is List
+              ? outcomesRaw
+              : null;
+      final prices = pricesRaw is String
+          ? jsonDecode(pricesRaw) as List<dynamic>
+          : pricesRaw is List
+              ? pricesRaw
+              : null;
+      if (outcomes == null || prices == null || outcomes.length != prices.length) {
+        return (snap: null, err: 'Could not parse outcomes/prices');
+      }
+      double? yesP;
+      double? noP;
+      for (var i = 0; i < outcomes.length; i++) {
+        final label = outcomes[i].toString().toLowerCase().trim();
+        final p = double.tryParse(prices[i].toString());
+        if (p == null) continue;
+        if (label == 'yes') yesP = p;
+        if (label == 'no') noP = p;
+      }
+      yesP ??= double.tryParse(prices.first.toString());
+      noP ??= (prices.length > 1) ? double.tryParse(prices[1].toString()) : null;
+      if (yesP == null) {
+        return (snap: null, err: 'Could not read implied odds');
+      }
+      yesP = yesP.clamp(0.0, 1.0);
+      noP = (noP ?? (1.0 - yesP)).clamp(0.0, 1.0);
+      final liq = (m['liquidityNum'] as num?)?.toDouble() ??
+          double.tryParse(m['liquidity']?.toString() ?? '') ??
+          (event['liquidity'] as num?)?.toDouble();
+      final endLabel = (m['endDateIso'] as String?)?.trim();
+      return (
+        snap: _PolymarketSnapshot(
+          question: question,
+          yesProbability: yesP,
+          noProbability: noP,
+          endDateLabel: (endLabel != null && endLabel.isNotEmpty) ? endLabel : '2026-12-31',
+          liquidityUsd: liq,
+          fetchedAt: DateTime.now(),
+        ),
+        err: null
+      );
+    } catch (e) {
+      return (snap: null, err: e.toString());
+    }
   }
 
   Future<_NewsBundle> _loadFeeds() async {
@@ -85,6 +178,111 @@ class _NewsScreenState extends State<NewsScreen> {
         );
       }
     }
+  }
+
+  static String _formatUsdCompact(double? v) {
+    if (v == null || v <= 0) return '—';
+    if (v >= 1e6) return '\$${(v / 1e6).toStringAsFixed(2)}M';
+    if (v >= 1e3) return '\$${(v / 1e3).toStringAsFixed(1)}k';
+    return '\$${v.toStringAsFixed(0)}';
+  }
+
+  static String _clockHm(DateTime d) {
+    final h = d.hour.toString().padLeft(2, '0');
+    final m = d.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  Widget _predictionMarketCard(_PolymarketSnapshot? snap, String? polymarketError) {
+    final subtle = TextStyle(color: AppColors.muted.withValues(alpha: 0.9), fontSize: 11, height: 1.35);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openUrl(_kPolymarketEventUrl),
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.quantum.withValues(alpha: 0.28)),
+            color: AppColors.surface.withValues(alpha: 0.55),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.poll_outlined, size: 22, color: AppColors.quantum.withValues(alpha: 0.95)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Prediction market',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                        ),
+                        Text('Polymarket · tap to open', style: subtle),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.open_in_new, size: 18, color: AppColors.muted),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (snap != null) ...[
+                Text(
+                  snap.question,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, height: 1.3, color: AppColors.text),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Yes ${(snap.yesProbability * 100).toStringAsFixed(1)}%',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.amber),
+                      ),
+                    ),
+                    Text(
+                      'No ${(snap.noProbability * 100).toStringAsFixed(1)}%',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.muted),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: snap.yesProbability,
+                    minHeight: 8,
+                    backgroundColor: AppColors.surface2.withValues(alpha: 0.9),
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.amber.withValues(alpha: 0.88)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Resolves by ${snap.endDateLabel} · Liquidity ~${_formatUsdCompact(snap.liquidityUsd)}',
+                  style: subtle,
+                ),
+                Text(
+                  'Snapshot ${_clockHm(snap.fetchedAt)} local · implied odds from traders (not advice)',
+                  style: subtle,
+                ),
+              ] else ...[
+                Text(
+                  polymarketError ?? 'No data',
+                  style: const TextStyle(fontSize: 12, color: AppColors.risk, height: 1.35),
+                ),
+                const SizedBox(height: 8),
+                Text('Open Polymarket in browser to view the market.', style: subtle),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _overviewImage(String assetPath, String caption) {
@@ -473,7 +671,7 @@ class _NewsScreenState extends State<NewsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('News & Updates')),
-      body: FutureBuilder<_NewsBundle>(
+      body: FutureBuilder<_NewsScreenData>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
@@ -482,11 +680,12 @@ class _NewsScreenState extends State<NewsScreen> {
           if (snap.hasError) {
             return Center(child: Text('Error: ${snap.error}', style: const TextStyle(color: AppColors.risk)));
           }
-          final bundle = snap.data!;
+          final data = snap.data!;
+          final bundle = data.bundle;
           return RefreshIndicator(
             color: AppColors.amber,
             onRefresh: () async {
-              setState(() => _future = _loadFeeds());
+              setState(() => _future = _loadScreenData());
               await _future;
             },
             child: LayoutBuilder(
@@ -494,6 +693,8 @@ class _NewsScreenState extends State<NewsScreen> {
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                   children: [
+                    _predictionMarketCard(data.polymarket, data.polymarketError),
+                    const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
@@ -518,7 +719,7 @@ class _NewsScreenState extends State<NewsScreen> {
                     const Text('Recent headlines & summaries', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
                     const SizedBox(height: 8),
                     Text(
-                      'Pull to refresh. RSS needs network; web builds may hit CORS in some browsers. Tap a headline to open the article when a link is available.',
+                      'Pull to refresh for Polymarket odds and RSS headlines. Web builds may hit CORS in some browsers. Tap a headline to open the article when a link is available.',
                       style: TextStyle(color: AppColors.muted.withValues(alpha: 0.88), fontSize: 12, height: 1.4),
                     ),
                     const SizedBox(height: 14),
@@ -631,6 +832,34 @@ class _LegendDot extends StatelessWidget {
       ],
     );
   }
+}
+
+class _PolymarketSnapshot {
+  _PolymarketSnapshot({
+    required this.question,
+    required this.yesProbability,
+    required this.noProbability,
+    required this.endDateLabel,
+    this.liquidityUsd,
+    required this.fetchedAt,
+  });
+  final String question;
+  final double yesProbability;
+  final double noProbability;
+  final String endDateLabel;
+  final double? liquidityUsd;
+  final DateTime fetchedAt;
+}
+
+class _NewsScreenData {
+  _NewsScreenData({
+    required this.bundle,
+    this.polymarket,
+    this.polymarketError,
+  });
+  final _NewsBundle bundle;
+  final _PolymarketSnapshot? polymarket;
+  final String? polymarketError;
 }
 
 class _NewsItem {

@@ -16,6 +16,26 @@ class GlossaryScreen extends StatelessWidget {
       'Cryptography designed to resist attacks from both classical and quantum computers.',
     ),
     (
+      'Shor\'s algorithm',
+      'Quantum algorithm that could break widely used public-key schemes (including the math behind ECDSA) on a large enough, fault-tolerant machine. Drives much of the PQC timeline discussion.',
+    ),
+    (
+      'Grover\'s algorithm',
+      'Quantum search that roughly halves the effective bit-strength of symmetric crypto and hashes (e.g. 256-bit targets feel like ~128-bit against a capable attacker). Relevant for address reuse and preimage work, but not a direct ECDSA break like Shor.',
+    ),
+    (
+      'Physical vs logical qubits',
+      'Physical qubits are noisy hardware elements; logical qubits bundle many physical ones with error correction. Cryptographically meaningful breaks usually assume large numbers of logical (fault-tolerant) qubits, not raw chip counts alone.',
+    ),
+    (
+      'Fault-tolerant quantum computing',
+      'Regime where errors are corrected fast enough that long, deep circuits (like cryptanalysis) can run reliably. Often assumed in “break ECDSA” scenarios.',
+    ),
+    (
+      'ML-KEM / ML-DSA / SLH-DSA',
+      'NIST-standardized post-quantum schemes (from Kyber/Dilithium/SPHINCS+ families). ML-KEM is key encapsulation; ML-DSA and SLH-DSA are signatures—relevant as reference designs for future non-Bitcoin systems and hybrid ideas.',
+    ),
+    (
       'SPHINCS+',
       'Stateless hash-based signature scheme. Conservative post-quantum option; larger signatures.',
     ),
@@ -26,6 +46,22 @@ class GlossaryScreen extends StatelessWidget {
     (
       'Hybrid schemes',
       'Combine classical and post-quantum algorithms. Gradual migration path.',
+    ),
+    (
+      'Harvest now, decrypt later',
+      'Recording encrypted data or public keys today to break or abuse them when future quantum (or classical) attacks become feasible. Motivates early PQC adoption outside Bitcoin too.',
+    ),
+    (
+      'UTXO',
+      'Unspent Transaction Output. Bitcoin’s model: coins live in outputs locked by scripts and keys; migration discussions often revolve around how each UTXO type would move to new schemes.',
+    ),
+    (
+      'Taproot / Schnorr',
+      'Bitcoin’s modern script and signature tooling (BIP 340 Schnorr, Taproot spending paths). Still classical curves—quantum threat models still apply; any PQ upgrade would need a new design layer.',
+    ),
+    (
+      'Soft fork vs hard fork',
+      'Soft fork: tightened rules, old nodes still see blocks as valid if they follow old rules. Hard fork: incompatible rule change. Post-quantum Bitcoin changes are often debated in terms of coordination and backward compatibility.',
     ),
     (
       'Quantum break year',
@@ -39,8 +75,10 @@ class GlossaryScreen extends StatelessWidget {
 
   static const _links = <(String, String)>[
     ('NIST PQC Project', 'https://csrc.nist.gov/projects/post-quantum-cryptography'),
+    ('NIST PQC Standardization', 'https://csrc.nist.gov/projects/post-quantum-cryptography/post-quantum-cryptography-standardization'),
     ('Bitcoin BIPs', 'https://github.com/bitcoin/bips'),
     ('Bitcoin Optech', 'https://bitcoinops.org/'),
+    ('Bitcoin Wiki — Quantum computing', 'https://en.bitcoin.it/wiki/Quantum_computing_and_Bitcoin'),
   ];
 
   @override
