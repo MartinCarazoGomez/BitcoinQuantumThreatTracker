@@ -13,18 +13,52 @@ CUSTOM_CSS = """
     /* Base */
     html, body, [class*="css"] { font-family: 'DM Sans', sans-serif !important; }
     
-    /* Main container — extra bottom padding for fixed tab bar */
-    .main .block-container { 
-        padding-top: 2rem; 
-        padding-bottom: 6rem !important; 
-        max-width: 1420px;
+    /* --- App shell: hide Streamlit “website” chrome (header, menu, footer badge) --- */
+    header[data-testid="stHeader"],
+    div[data-testid="stToolbar"],
+    div[data-testid="stDecoration"],
+    div[data-testid="stStatusWidget"] {
+        display: none !important;
+    }
+    footer,
+    [data-testid="stFooter"] {
+        display: none !important;
+    }
+    /* Full-bleed canvas; content reads as a single app column */
+    .stApp {
+        background: radial-gradient(ellipse 120% 80% at 50% 0%, rgba(245, 158, 11, 0.06), transparent),
+            linear-gradient(180deg, #030712 0%, #0a0f1a 45%, #0f172a 100%) !important;
+    }
+    section[data-testid="stMain"] > div {
+        padding-top: 0 !important;
+    }
+    /* Narrow centered column ≈ phone / native app width (not a wide forum layout) */
+    .main .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 6rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: 520px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    @media (min-width: 560px) {
+        .main .block-container {
+            padding-top: 1.25rem !important;
+            border-left: 1px solid rgba(148, 163, 184, 0.12);
+            border-right: 1px solid rgba(148, 163, 184, 0.12);
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.2), 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+            min-height: 100vh;
+            background: rgba(10, 15, 26, 0.65) !important;
+            backdrop-filter: blur(8px);
+        }
     }
     
     /* Hero title */
     h1 { 
         font-weight: 700 !important; 
         letter-spacing: -0.03em;
-        font-size: 2.25rem !important;
+        font-size: 1.75rem !important;
         background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 40%, #fde68a 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -32,16 +66,18 @@ CUSTOM_CSS = """
         margin-bottom: 0.25rem !important;
     }
     
-    /* Subheaders - lighter for flow */
+    /* Section titles — app screen style (not forum / blog left-border) */
     h2, h3 { 
-        font-weight: 600 !important; 
-        color: #e2e8f0 !important;
-        padding-bottom: 0.4rem;
-        padding-left: 0.6rem;
-        border-left: 3px solid rgba(245, 158, 11, 0.6);
-        margin-left: -0.6rem;
-        margin-top: 1.75rem !important;
-        margin-bottom: 0.75rem !important;
+        font-weight: 700 !important; 
+        font-size: 1rem !important;
+        letter-spacing: 0.02em;
+        color: #f1f5f9 !important;
+        padding: 0 0 0.35rem 0 !important;
+        margin-left: 0 !important;
+        border-left: none !important;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+        margin-top: 1.35rem !important;
+        margin-bottom: 0.65rem !important;
     }
     
     /* Hero intro card */
@@ -156,7 +192,7 @@ CUSTOM_CSS = """
     .back-bar { padding: 0.75rem 0; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(148,163,184,0.15); }
     
     /* ========== Landing page (professional) ========== */
-    .landing-wrap { max-width: 1100px; margin: 0 auto; }
+    .landing-wrap { max-width: 100%; margin: 0 auto; }
     .landing-hero {
         text-align: center;
         padding: 3rem 2rem 2.5rem;
@@ -351,58 +387,240 @@ CUSTOM_CSS = """
     .landing-workflow li { margin-bottom: 0.35rem; }
     .landing-workflow li:last-child { margin-bottom: 0; }
     
-    /* ========== App-style bottom tab bar (fixed) ========== */
+    /* ========== App-style bottom tab bar (fixed to viewport) ========== */
+    /* Marker row: no layout space (sibling selector targets next block) */
     .app-tabbar-trigger { display: none !important; }
-    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] {
+    .element-container:has(.app-tabbar-trigger),
+    div[data-testid="stElementContainer"]:has(.app-tabbar-trigger) {
+        height: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        border: none !important;
+    }
+    /*
+      Pin the *wrapper* element-container that holds the nav columns (Flutter-style bottom bar).
+    */
+    .element-container:has(.app-tabbar-trigger) + .element-container,
+    div[data-testid="stElementContainer"]:has(.app-tabbar-trigger) + div[data-testid="stElementContainer"] {
         position: fixed !important;
         bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
         width: 100% !important;
         max-width: 100vw !important;
-        margin: 0 auto !important;
-        padding: 0.35rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom, 0px)) !important;
-        background: rgba(10, 15, 26, 0.92) !important;
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border-top: 1px solid rgba(148, 163, 184, 0.2);
-        box-shadow: 0 -12px 40px -8px rgba(0, 0, 0, 0.55);
-        z-index: 1000;
+        margin: 0 !important;
+        padding: 0.4rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom, 0px)) !important;
+        padding-left: max(0.5rem, env(safe-area-inset-left, 0px)) !important;
+        padding-right: max(0.5rem, env(safe-area-inset-right, 0px)) !important;
+        box-sizing: border-box !important;
+        background: rgba(15, 23, 42, 0.98) !important;
+        backdrop-filter: blur(18px) saturate(1.2);
+        -webkit-backdrop-filter: blur(18px) saturate(1.2);
+        border-top: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6);
+        z-index: 100002 !important;
+        pointer-events: auto !important;
+    }
+    .element-container:has(.app-tabbar-trigger) + .element-container [data-testid="stHorizontalBlock"],
+    div[data-testid="stElementContainer"]:has(.app-tabbar-trigger) + div[data-testid="stElementContainer"] [data-testid="stHorizontalBlock"] {
+        position: relative !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        gap: 0.2rem !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    .element-container:has(.app-tabbar-trigger) + .element-container [data-testid="stHorizontalBlock"] > div,
+    div[data-testid="stElementContainer"]:has(.app-tabbar-trigger) + div[data-testid="stElementContainer"] [data-testid="stHorizontalBlock"] > div {
         gap: 0.15rem !important;
     }
-    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] > div {
-        gap: 0.15rem !important;
-    }
-    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] button {
-        border-radius: 12px !important;
-        font-size: 0.7rem !important;
+    /* Flutter / Material 3–style bottom nav: icon row + label, pill for selected */
+    .element-container:has(.app-tabbar-trigger) + .element-container [data-testid="stHorizontalBlock"] button,
+    div[data-testid="stElementContainer"]:has(.app-tabbar-trigger) + div[data-testid="stElementContainer"] [data-testid="stHorizontalBlock"] button {
+        border-radius: 999px !important;
+        font-size: 0.62rem !important;
         font-weight: 600 !important;
-        padding: 0.5rem 0.15rem !important;
-        min-height: 2.85rem !important;
-        line-height: 1.2 !important;
-        white-space: normal !important;
+        padding: 0.45rem 0.12rem 0.5rem !important;
+        min-height: 3.25rem !important;
+        line-height: 1.25 !important;
+        white-space: pre-line !important;
+        text-align: center !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 0.1rem !important;
-        border: 1px solid rgba(148, 163, 184, 0.12) !important;
-        background: rgba(30, 41, 59, 0.5) !important;
+        gap: 0.15rem !important;
+        border: none !important;
+        background: transparent !important;
         color: #94a3b8 !important;
+        box-shadow: none !important;
     }
-    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] button:hover {
-        border-color: rgba(245, 158, 11, 0.35) !important;
+    .element-container:has(.app-tabbar-trigger) + .element-container [data-testid="stHorizontalBlock"] button:hover,
+    div[data-testid="stElementContainer"]:has(.app-tabbar-trigger) + div[data-testid="stElementContainer"] [data-testid="stHorizontalBlock"] button:hover {
         color: #e2e8f0 !important;
+        background: rgba(255, 255, 255, 0.04) !important;
     }
-    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] button[kind="primary"],
-    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] button[data-testid="baseButton-primary"] {
-        background: linear-gradient(180deg, rgba(245, 158, 11, 0.22) 0%, rgba(245, 158, 11, 0.08) 100%) !important;
-        border-color: rgba(245, 158, 11, 0.45) !important;
+    /* Selected tab — pill behind icon (amber / brown tint like Flutter NavigationBar) */
+    .element-container:has(.app-tabbar-trigger) + .element-container [data-testid="stHorizontalBlock"] button[kind="primary"],
+    .element-container:has(.app-tabbar-trigger) + .element-container [data-testid="stHorizontalBlock"] button[data-testid="baseButton-primary"],
+    div[data-testid="stElementContainer"]:has(.app-tabbar-trigger) + div[data-testid="stElementContainer"] [data-testid="stHorizontalBlock"] button[kind="primary"],
+    div[data-testid="stElementContainer"]:has(.app-tabbar-trigger) + div[data-testid="stElementContainer"] [data-testid="stHorizontalBlock"] button[data-testid="baseButton-primary"] {
+        background: rgba(120, 53, 15, 0.55) !important;
+        border: none !important;
         color: #fef3c7 !important;
+        box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.35) !important;
     }
-    .element-container:has(.app-tabbar-trigger) + .element-container div[data-testid="stHorizontalBlock"] button p {
-        font-size: 0.68rem !important;
+    .element-container:has(.app-tabbar-trigger) + .element-container [data-testid="stHorizontalBlock"] button p,
+    div[data-testid="stElementContainer"]:has(.app-tabbar-trigger) + div[data-testid="stElementContainer"] [data-testid="stHorizontalBlock"] button p {
+        font-size: 0.62rem !important;
+        font-weight: 600 !important;
         margin: 0 !important;
+        line-height: 1.2 !important;
+    }
+    
+    /* ========== Mobile & touch (app-wide) ========== */
+    html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+        touch-action: manipulation;
+    }
+    .stApp {
+        overflow-x: hidden;
+    }
+    /* Horizontal scroll for wide tables / Plotly without breaking layout */
+    .stDataFrame, [data-testid="stDataFrame"] {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
+    }
+    div[data-testid="stPlotlyChart"] {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    /* Radio / checkbox — comfortable tap targets on touch */
+    @media (max-width: 768px) {
+        [data-testid="stRadio"] label,
+        [data-testid="stCheckbox"] label {
+            padding: 0.45rem 0 !important;
+            min-height: 44px;
+            align-items: flex-start !important;
+        }
+        [data-testid="stSlider"] { padding-top: 0.5rem; padding-bottom: 0.75rem; }
+        .stDownloadButton button, .stButton > button {
+            min-height: 44px !important;
+        }
+    }
+    /* Narrow screens: tighter chrome, readable type */
+    @media (max-width: 768px) {
+        .main .block-container {
+            padding-left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+            padding-right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+            padding-top: 1rem !important;
+            padding-bottom: 6.75rem !important;
+            max-width: 100% !important;
+        }
+        h1 {
+            font-size: 1.65rem !important;
+            line-height: 1.2 !important;
+        }
+        h2, h3 {
+            font-size: 1.05rem !important;
+            margin-top: 1.25rem !important;
+        }
+        .landing-hero {
+            padding: 1.75rem 1rem 1.5rem !important;
+            margin-bottom: 1.25rem !important;
+            border-radius: 18px !important;
+        }
+        .landing-subtitle {
+            font-size: 0.95rem !important;
+            margin-bottom: 1rem !important;
+        }
+        .landing-meta {
+            flex-direction: column;
+            gap: 0.35rem !important;
+            font-size: 0.75rem !important;
+        }
+        .landing-meta span:nth-child(even) { display: none; }
+        .landing-footer, .landing-workflow {
+            padding: 1.1rem 1rem !important;
+        }
+        .hero-card {
+            padding: 1.1rem 1rem !important;
+            font-size: 0.9rem !important;
+        }
+    }
+    /* Stack Streamlit columns on small viewports (except bottom tab bar) */
+    @media (max-width: 768px) {
+        div[data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap !important;
+            gap: 0.5rem 0 !important;
+        }
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            flex: 1 1 100% !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+        }
+        /* Metrics row: two columns on phone when six metrics */
+        div[data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > div[data-testid="column"] {
+            flex: 1 1 calc(50% - 0.5rem) !important;
+            max-width: calc(50% - 0.25rem) !important;
+        }
+        /* Tab bar: always one row, six equal tabs (Flutter-style) */
+        .element-container:has(.app-tabbar-trigger) + .element-container [data-testid="stHorizontalBlock"],
+        div[data-testid="stElementContainer"]:has(.app-tabbar-trigger) + div[data-testid="stElementContainer"] [data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            gap: 0.1rem !important;
+        }
+        .element-container:has(.app-tabbar-trigger) + .element-container [data-testid="stHorizontalBlock"] > div[data-testid="column"],
+        div[data-testid="stElementContainer"]:has(.app-tabbar-trigger) + div[data-testid="stElementContainer"] [data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            flex: 1 1 0 !important;
+            width: auto !important;
+            max-width: none !important;
+            min-width: 0 !important;
+        }
+    }
+    /* Very small phones: tab labels + touch */
+    @media (max-width: 400px) {
+        .element-container:has(.app-tabbar-trigger) + .element-container [data-testid="stHorizontalBlock"] button,
+        div[data-testid="stElementContainer"]:has(.app-tabbar-trigger) + div[data-testid="stElementContainer"] [data-testid="stHorizontalBlock"] button {
+            font-size: 0.58rem !important;
+            padding: 0.4rem 0.08rem !important;
+            min-height: 48px !important;
+            line-height: 1.1 !important;
+        }
+        h1 { font-size: 1.45rem !important; }
+    }
+    /* Landscape phones / small tablets */
+    @media (min-width: 481px) and (max-width: 900px) {
+        .main .block-container {
+            padding-left: 1.25rem !important;
+            padding-right: 1.25rem !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > div[data-testid="column"] {
+            flex: 1 1 calc(33.333% - 0.5rem) !important;
+            max-width: calc(33.333% - 0.34rem) !important;
+        }
+    }
+    /* Tabs: horizontal scroll on narrow screens */
+    @media (max-width: 768px) {
+        [data-testid="stTabs"] { max-width: 100%; }
+        [data-testid="stTabs"] [role="tablist"],
+        [data-testid="stTabs"] [data-baseweb="tab-list"] {
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+            gap: 0.25rem;
+            padding-bottom: 0.25rem;
+        }
+        [data-testid="stTabs"] button { flex-shrink: 0; white-space: nowrap; }
     }
 </style>
 """
@@ -657,18 +875,20 @@ def apply_scenario_to_state(scenario):
 
 
 def render_bottom_tabbar():
-    """Fixed bottom navigation — five tools, app-style (Simulator, Quick, News, Glossary, Timeline)."""
+    """Fixed bottom navigation — matches Flutter: Home + Simulator, Quick, News, Glossary, Timeline."""
     page = st.session_state.get("page", "home")
     st.markdown('<div class="app-tabbar-trigger"></div>', unsafe_allow_html=True)
-    c1, c2, c3, c4, c5 = st.columns(5)
+    c0, c1, c2, c3, c4, c5 = st.columns(6)
+    # Two-line labels: icon (emoji) on top, short name below — same order as Flutter app
     tabs = [
-        ("simulator", "tabbar_sim", "📊 Simulator"),
-        ("quick_check", "tabbar_quick", "⚡ Quick"),
-        ("news", "tabbar_news", "📰 News"),
-        ("glossary", "tabbar_gloss", "📖 Glossary"),
-        ("timeline", "tabbar_timeline", "📅 Timeline"),
+        ("home", "tabbar_home", "🏠\nHome"),
+        ("simulator", "tabbar_sim", "📊\nSimulator"),
+        ("quick_check", "tabbar_quick", "⚡\nQuick"),
+        ("news", "tabbar_news", "📰\nNews"),
+        ("glossary", "tabbar_gloss", "📖\nGlossary"),
+        ("timeline", "tabbar_timeline", "📅\nTimeline"),
     ]
-    cols = [c1, c2, c3, c4, c5]
+    cols = [c0, c1, c2, c3, c4, c5]
     for i, (target, key, label) in enumerate(tabs):
         with cols[i]:
             is_active = page == target
@@ -745,11 +965,11 @@ def render_home():
         <div class="landing-stats">
             <div class="landing-stat"><div class="landing-stat-num">3</div><div class="landing-stat-label">Scenario presets</div></div>
             <div class="landing-stat"><div class="landing-stat-num">30yr</div><div class="landing-stat-label">Horizon (2026–2055)</div></div>
-            <div class="landing-stat"><div class="landing-stat-num">5</div><div class="landing-stat-label">Tools (see bar below)</div></div>
+            <div class="landing-stat"><div class="landing-stat-num">6</div><div class="landing-stat-label">Tabs (see bar below)</div></div>
         </div>
         <div class="landing-section-title">Navigation</div>
         <p style="text-align:center;color:#94a3b8;font-size:0.92rem;max-width:520px;margin:0 auto 0.5rem;line-height:1.55;">
-            Use the <strong style="color:#cbd5e1;">bottom bar</strong> to switch between Simulator, Quick Check, News, Glossary, and Timeline—like a native app.
+            Use the <strong style="color:#cbd5e1;">bottom bar</strong> to switch between Home, Simulator, Quick Check, News, Glossary, and Timeline—like the Flutter app.
         </p>
         </div>
         """,
@@ -792,7 +1012,7 @@ def render_home():
 
 def render_back_button():
     """Back to home — shown on all non-home pages."""
-    if st.button("← Back to Home", key="back_home", use_container_width=False):
+    if st.button("← Back to Home", key="back_home", use_container_width=True):
         st.session_state["page"] = "home"
         st.rerun()
     st.markdown("<br>", unsafe_allow_html=True)
@@ -1056,18 +1276,20 @@ def render_timeline():
         fig.add_trace(go.Scatter(
             x=[row["Year"]], y=[y_off],
             mode="markers+text",
-            marker=dict(size=14, color=colors.get(row["Type"], "#94a3b8"), symbol="diamond", line=dict(width=2, color="white")),
+            marker=dict(size=12, color=colors.get(row["Type"], "#94a3b8"), symbol="diamond", line=dict(width=2, color="white")),
             text=f"{int(row['Year'])}: {row['Event']}",
             textposition="top center",
+            textfont=dict(size=9, color="#cbd5e1"),
             name=row["Type"],
             hovertemplate=f"<b>{row['Event']}</b><br>{row['Detail']}<extra></extra>",
         ))
     fig.update_layout(
-        title="Quantum & Bitcoin PQC Timeline",
+        title=dict(text="Quantum & Bitcoin PQC Timeline", font=dict(size=14)),
         xaxis=dict(title="Year", range=[2017, 2045], dtick=2),
         yaxis=dict(showticklabels=False, zeroline=False, range=[-0.4, 0.4]),
-        paper_bgcolor="#0a0f1a", plot_bgcolor="#0a0f1a", font=dict(color="#94a3b8"),
-        height=280, showlegend=False, margin=dict(t=40, b=40),
+        paper_bgcolor="#0a0f1a", plot_bgcolor="#0a0f1a", font=dict(color="#94a3b8", size=11),
+        height=300, showlegend=False, margin=dict(t=44, b=48, l=28, r=20),
+        autosize=True,
     )
     st.plotly_chart(fig, use_container_width=True)
     st.dataframe(df, hide_index=True, use_container_width=True, column_config={"Year": st.column_config.NumberColumn(format="%d")})
@@ -1183,7 +1405,7 @@ def render_simulator():
         xaxis=dict(title="Year", gridcolor="rgba(71, 85, 105, 0.3)", zeroline=False),
         yaxis=dict(title="Normalized value (0-1)", range=[0, 1], gridcolor="rgba(71, 85, 105, 0.3)", zeroline=False),
         hovermode="x unified",
-        margin=dict(t=50, b=50, l=60, r=20),
+        margin=dict(t=50, b=58, l=52, r=16),
         legend=dict(bgcolor="#111827", bordercolor="#334155", font=dict(color="#e2e8f0")),
     ))
     if show_quantum:
@@ -1285,7 +1507,16 @@ def render_simulator():
 
 
 def main():
-    st.set_page_config(page_title="Bitcoin vs Quantum Threat Toolkit", layout="wide", initial_sidebar_state="collapsed")
+    st.set_page_config(
+        page_title="Bitcoin Quantum Threat Toolkit",
+        layout="centered",
+        initial_sidebar_state="collapsed",
+        menu_items={
+            "Get help": None,
+            "Report a bug": None,
+            "About": None,
+        },
+    )
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
     init_state()
 
