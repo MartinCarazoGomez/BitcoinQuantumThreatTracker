@@ -8,6 +8,24 @@ import '../content/app_strings.dart';
 import '../engine/risk_engine.dart';
 import '../theme/app_theme.dart';
 
+/// Rounds [value] to [n] significant digits (for tooltips).
+double _roundToSignificantDigits(double value, int n) {
+  if (value == 0) return 0;
+  final d = log(value.abs()) / ln10;
+  final magnitude = d.floor();
+  final scale = pow(10.0, n - 1 - magnitude);
+  return (value * scale).round() / scale;
+}
+
+/// Formats [x] as a decimal string with exactly three significant figures.
+String _formatSig3(double x) {
+  if (x == 0) return '0';
+  final r = _roundToSignificantDigits(x, 3);
+  final mag = (log(r.abs()) / ln10).floor();
+  final decimals = max(0, 2 - mag);
+  return r.toStringAsFixed(decimals);
+}
+
 class SimulatorScreen extends StatefulWidget {
   const SimulatorScreen({super.key});
 
@@ -130,12 +148,13 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
                         style: TextStyle(fontSize: 12, color: AppColors.muted.withValues(alpha: 0.9)),
                       ),
                     ],
-                    _slider('Quantum steepness', 'quantum_steepness', 0.15, 0.80, 100),
-                    _slider('Quantum break year (50%)', 'break_year', 2032, 2050, 1, isInt: true),
-                    _slider('Migration start year', 'migration_start', 2026, 2050, 1, isInt: true),
-                    _slider('Migration speed', 'migration_speed', 0.15, 0.90, 100),
-                    _slider('Vulnerable share', 'vulnerable_share', 0.20, 1.00, 100),
-                    _slider('Crisis threshold', 'crisis_threshold', 0.10, 0.80, 100),
+                    // Divisions match Streamlit step 0.01 for floats; integer sliders use one step per year.
+                    _slider('Quantum steepness', 'quantum_steepness', 0.15, 0.80, 65),
+                    _slider('Quantum break year (50%)', 'break_year', 2032, 2050, 18, isInt: true),
+                    _slider('Migration start year', 'migration_start', 2026, 2050, 24, isInt: true),
+                    _slider('Migration speed', 'migration_speed', 0.15, 0.90, 75),
+                    _slider('Vulnerable share', 'vulnerable_share', 0.20, 1.00, 80),
+                    _slider('Crisis threshold', 'crisis_threshold', 0.10, 0.80, 70),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -171,11 +190,16 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
                   'Race Between Quantum Capability and Bitcoin Migration',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.text),
                 ),
+                const SizedBox(height: 6),
+                Text(
+                  'Y-axis is 0–100% for every curve: quantum capability, migration progress, and risk—same scale, different meaning per color.',
+                  style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
+                ),
                 const SizedBox(height: 8),
                 SizedBox(height: 300, child: _mainLineChart(curves, crit)),
                 const SizedBox(height: 8),
                 Text(
-                  'At ${_scrubYear.round()}: Q=${qv.toStringAsFixed(2)} M=${mv.toStringAsFixed(2)} R=${rv.toStringAsFixed(2)}',
+                  'At ${_scrubYear.round()}: Q ${(qv * 100).round()}% · M ${(mv * 100).round()}% · R ${(rv * 100).round()}%',
                   style: const TextStyle(fontSize: 12, color: AppColors.muted),
                 ),
               ],
@@ -289,7 +313,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
     }
 
     final bars = <LineChartBarData>[];
+    final lineNames = <String>[];
     if (_showQ) {
+      lineNames.add('Quantum');
       bars.add(
         LineChartBarData(
           spots: spotsQ,
@@ -309,6 +335,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
       );
     }
     if (_showM) {
+      lineNames.add('Migration');
       bars.add(
         LineChartBarData(
           spots: spotsM,
@@ -328,6 +355,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
       );
     }
     if (_showR) {
+      lineNames.add('Risk');
       bars.add(
         LineChartBarData(
           spots: spotsR,
@@ -360,8 +388,41 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
           getDrawingVerticalLine: (v) => FlLine(color: Colors.white.withValues(alpha: 0.06)),
         ),
         titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 36)),
+          leftTitles: AxisTitles(
+            axisNameWidget: Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                'Level (0–100%)',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted.withValues(alpha: 0.95),
+                ),
+              ),
+            ),
+            axisNameSize: 18,
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              interval: 0.2,
+              getTitlesWidget: (value, meta) {
+                final p = (value.clamp(0.0, 1.0) * 100).round();
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Text(
+                    '$p%',
+                    style: const TextStyle(fontSize: 10, color: AppColors.muted),
+                  ),
+                );
+              },
+            ),
+          ),
           bottomTitles: AxisTitles(
+            axisNameWidget: Text(
+              'Year',
+              style: TextStyle(fontSize: 10, color: AppColors.muted.withValues(alpha: 0.9)),
+            ),
+            axisNameSize: 14,
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 28,
@@ -375,7 +436,29 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
         borderData: FlBorderData(show: true, border: Border.all(color: Colors.white.withValues(alpha: 0.06))),
         extraLinesData: ExtraLinesData(verticalLines: vertical, horizontalLines: horizontal),
         lineBarsData: bars,
-        lineTouchData: const LineTouchData(enabled: true),
+        lineTouchData: LineTouchData(
+          enabled: true,
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipItems: (spots) {
+              if (spots.isEmpty) return [];
+              final year = spots.first.x.round();
+              final sb = StringBuffer('Year $year');
+              for (final s in spots) {
+                final idx = s.barIndex;
+                final label = idx >= 0 && idx < lineNames.length ? lineNames[idx] : 'Series ${idx + 1}';
+                sb
+                  ..writeln()
+                  ..write('$label: ${_formatSig3(s.y)}');
+              }
+              return [
+                LineTooltipItem(
+                  sb.toString(),
+                  const TextStyle(color: Colors.white, fontSize: 11, height: 1.35),
+                ),
+              ];
+            },
+          ),
+        ),
       ),
     );
   }
@@ -463,7 +546,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
 
   Widget _slider(String label, String key, double min, double max, int divisions, {bool isInt = false}) {
     final v = _params[key];
-    final double cur = isInt ? (v as int).toDouble() : v as double;
+    final double cur = isInt ? (v as int).toDouble() : (v as num).toDouble();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
