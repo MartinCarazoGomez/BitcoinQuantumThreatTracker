@@ -38,14 +38,13 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
   String _strategy = 'Hybrid';
   late Map<String, dynamic> _params;
   late double _scrubYear;
-  bool _showQ = true;
-  bool _showM = true;
-  bool _showR = true;
-  bool _showDanger = true;
-  bool _showCrit = true;
   String _sensParam = 'migration_start';
 
   static const _scenarioShort = ['Opt', 'Mod', 'Pess'];
+
+  /// Must match [LineChartData.titlesData] left / bottom reserved sizes (plot area inset).
+  static const _chartPlotLeftInset = 38.0;
+  static const _chartPlotBottomInset = 26.0;
 
   @override
   void initState() {
@@ -59,6 +58,21 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       _scenario = name;
       _params = Map<String, dynamic>.from(scenarioDefaults(name));
     });
+  }
+
+  /// Snaps a chart x-coordinate to the nearest year index in [kYears].
+  int _nearestYearIndex(double x) {
+    final clamped = x.clamp(kYears.first.toDouble(), kYears.last.toDouble());
+    var best = 0;
+    var bestD = (kYears[0] - clamped).abs();
+    for (var j = 1; j < kYears.length; j++) {
+      final d = (kYears[j] - clamped).abs();
+      if (d < bestD) {
+        bestD = d;
+        best = j;
+      }
+    }
+    return best;
   }
 
   CurveResult _curves() {
@@ -88,11 +102,6 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
     final q50 = firstYearReachingThreshold(kYears, curves.quantum, 0.5);
     final verdict = generateVerdict(peak, crit.year, m50, q50);
     final rec = makeRecommendation(_scenario, verdict, crit.year, m50, q50);
-    final idx = kYears.indexWhere((y) => y >= _scrubYear.round());
-    final i = idx < 0 ? kYears.length - 1 : idx;
-    final qv = curves.quantum[i];
-    final mv = curves.migration[i];
-    final rv = curves.risk[i];
 
     return Scaffold(
       appBar: AppBar(title: const Text('Risk Simulator')),
@@ -103,39 +112,13 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             'Race Between Quantum Capability and Bitcoin Migration',
             style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.text),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
-            'Scrub year to explore',
-            style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9), fontWeight: FontWeight.w600),
-          ),
-          Slider(
-            value: _scrubYear.clamp(kYears.first.toDouble(), kYears.last.toDouble()),
-            min: kYears.first.toDouble(),
-            max: kYears.last.toDouble(),
-            label: _scrubYear.round().toString(),
-            onChanged: (v) => setState(() => _scrubYear = v.round().toDouble().clamp(
-                  kYears.first.toDouble(),
-                  kYears.last.toDouble(),
-                )),
-          ),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              FilterChip(label: const Text('Quantum'), selected: _showQ, onSelected: (v) => setState(() => _showQ = v)),
-              FilterChip(label: const Text('Migration'), selected: _showM, onSelected: (v) => setState(() => _showM = v)),
-              FilterChip(label: const Text('Risk'), selected: _showR, onSelected: (v) => setState(() => _showR = v)),
-              FilterChip(label: const Text('Danger zone'), selected: _showDanger, onSelected: (v) => setState(() => _showDanger = v)),
-              FilterChip(label: const Text('Critical line'), selected: _showCrit, onSelected: (v) => setState(() => _showCrit = v)),
-            ],
+            'Tap the chart to select a year. Q/M/R (0–1 scale) appear on the chart to 3 significant figures.',
+            style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9), fontSize: 12, height: 1.35),
           ),
           const SizedBox(height: 8),
           SizedBox(height: 300, child: _mainLineChart(curves, crit)),
-          const SizedBox(height: 10),
-          Text(
-            'At ${_scrubYear.round()}: Q ${(qv * 100).round()}% · M ${(mv * 100).round()}% · R ${(rv * 100).round()}%',
-            style: const TextStyle(fontSize: 12, color: AppColors.muted),
-          ),
           const SizedBox(height: 12),
           _metrics(peak, crit, m50, q50, verdict),
           const SizedBox(height: 10),
@@ -329,7 +312,83 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
     );
   }
 
+  /// Reads Q/M/R at [_scrubYear] and draws a small legend inside the plot (matches fl_chart axis insets).
+  Widget _chartValueOverlay(double qv, double mv, double rv) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        final left = _chartPlotLeftInset;
+        final plotW = w - left;
+        final plotH = h - _chartPlotBottomInset;
+        if (plotW <= 8 || plotH <= 8) return const SizedBox.shrink();
+
+        final minXd = kYears.first.toDouble();
+        final maxXd = kYears.last.toDouble();
+        final cx = left + (_scrubYear - minXd) / (maxXd - minXd) * plotW;
+
+        const labelW = 120.0;
+        var boxLeft = cx + 8;
+        if (boxLeft + labelW > left + plotW - 4) {
+          boxLeft = cx - 8 - labelW;
+        }
+        boxLeft = boxLeft.clamp(left + 4, left + plotW - labelW);
+
+        return Stack(
+          children: [
+            Positioned(
+              left: boxLeft,
+              top: 6,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: labelW),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Year ${_scrubYear.round()}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.muted.withValues(alpha: 0.95),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Q ${_formatSig3(qv)}',
+                      style: const TextStyle(fontSize: 11, color: AppColors.quantum, fontWeight: FontWeight.w600, height: 1.25),
+                    ),
+                    Text(
+                      'M ${_formatSig3(mv)}',
+                      style: const TextStyle(fontSize: 11, color: AppColors.migration, fontWeight: FontWeight.w600, height: 1.25),
+                    ),
+                    Text(
+                      'R ${_formatSig3(rv)}',
+                      style: const TextStyle(fontSize: 11, color: AppColors.risk, fontWeight: FontWeight.w600, height: 1.25),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _mainLineChart(CurveResult curves, CriticalResult crit) {
+    final yi = kYears.indexWhere((y) => y == _scrubYear.round());
+    final i = yi >= 0 ? yi : _nearestYearIndex(_scrubYear);
+    final qv = curves.quantum[i];
+    final mv = curves.migration[i];
+    final rv = curves.risk[i];
+
     final crisis = _params['crisis_threshold'] as double;
     final spotsQ = [for (var j = 0; j < kYears.length; j++) FlSpot(kYears[j].toDouble(), curves.quantum[j])];
     final spotsM = [for (var j = 0; j < kYears.length; j++) FlSpot(kYears[j].toDouble(), curves.migration[j])];
@@ -342,7 +401,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         strokeWidth: 1,
       ),
     ];
-    if (_showCrit && crit.year != null) {
+    if (crit.year != null) {
       vertical.add(
         VerticalLine(
           x: crit.year!.toDouble(),
@@ -353,83 +412,68 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       );
     }
 
-    final horizontal = <HorizontalLine>[];
-    if (_showDanger) {
-      horizontal.add(
-        HorizontalLine(
-          y: crisis,
-          color: AppColors.risk.withValues(alpha: 0.7),
-          strokeWidth: 1,
-          dashArray: [6, 4],
-        ),
-      );
-    }
+    final horizontal = <HorizontalLine>[
+      HorizontalLine(
+        y: crisis,
+        color: AppColors.risk.withValues(alpha: 0.7),
+        strokeWidth: 1,
+        dashArray: [6, 4],
+      ),
+    ];
 
-    final bars = <LineChartBarData>[];
-    final lineNames = <String>[];
-    if (_showQ) {
-      lineNames.add('Quantum');
-      bars.add(
-        LineChartBarData(
-          spots: spotsQ,
-          color: AppColors.quantum,
-          barWidth: 2.5,
-          isCurved: true,
-          belowBarData: BarAreaData(
-            show: true,
-            gradient: LinearGradient(
-              colors: [AppColors.quantum.withValues(alpha: 0.2), AppColors.quantum.withValues(alpha: 0.02)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
+    final bars = <LineChartBarData>[
+      LineChartBarData(
+        spots: spotsQ,
+        color: AppColors.quantum,
+        barWidth: 2.5,
+        isCurved: true,
+        belowBarData: BarAreaData(
+          show: true,
+          gradient: LinearGradient(
+            colors: [AppColors.quantum.withValues(alpha: 0.2), AppColors.quantum.withValues(alpha: 0.02)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
-          dotData: const FlDotData(show: false),
         ),
-      );
-    }
-    if (_showM) {
-      lineNames.add('Migration');
-      bars.add(
-        LineChartBarData(
-          spots: spotsM,
-          color: AppColors.migration,
-          barWidth: 2.5,
-          isCurved: true,
-          belowBarData: BarAreaData(
-            show: true,
-            gradient: LinearGradient(
-              colors: [AppColors.migration.withValues(alpha: 0.2), AppColors.migration.withValues(alpha: 0.02)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
+        dotData: const FlDotData(show: false),
+      ),
+      LineChartBarData(
+        spots: spotsM,
+        color: AppColors.migration,
+        barWidth: 2.5,
+        isCurved: true,
+        belowBarData: BarAreaData(
+          show: true,
+          gradient: LinearGradient(
+            colors: [AppColors.migration.withValues(alpha: 0.2), AppColors.migration.withValues(alpha: 0.02)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
-          dotData: const FlDotData(show: false),
         ),
-      );
-    }
-    if (_showR) {
-      lineNames.add('Risk');
-      bars.add(
-        LineChartBarData(
-          spots: spotsR,
-          color: AppColors.risk,
-          barWidth: 3,
-          isCurved: true,
-          belowBarData: BarAreaData(
-            show: true,
-            gradient: LinearGradient(
-              colors: [AppColors.risk.withValues(alpha: 0.25), AppColors.risk.withValues(alpha: 0.02)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
+        dotData: const FlDotData(show: false),
+      ),
+      LineChartBarData(
+        spots: spotsR,
+        color: AppColors.risk,
+        barWidth: 3,
+        isCurved: true,
+        belowBarData: BarAreaData(
+          show: true,
+          gradient: LinearGradient(
+            colors: [AppColors.risk.withValues(alpha: 0.25), AppColors.risk.withValues(alpha: 0.02)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
-          dotData: const FlDotData(show: false),
         ),
-      );
-    }
+        dotData: const FlDotData(show: false),
+      ),
+    ];
 
-    return LineChart(
-      LineChartData(
+    return Stack(
+      clipBehavior: Clip.hardEdge,
+      children: [
+        LineChart(
+          LineChartData(
         minX: kYears.first.toDouble(),
         maxX: kYears.last.toDouble(),
         minY: 0,
@@ -444,7 +488,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 38,
+              reservedSize: _chartPlotLeftInset,
               interval: 0.2,
               getTitlesWidget: (value, meta) {
                 final p = (value.clamp(0.0, 1.0) * 100).round();
@@ -461,7 +505,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 26,
+              reservedSize: _chartPlotBottomInset,
               interval: 5,
               getTitlesWidget: (v, m) => Text(v.toInt().toString(), style: const TextStyle(fontSize: 10, color: AppColors.muted)),
             ),
@@ -474,28 +518,40 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         lineBarsData: bars,
         lineTouchData: LineTouchData(
           enabled: true,
+          handleBuiltInTouches: true,
           touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (spots) {
-              if (spots.isEmpty) return [];
-              final year = spots.first.x.round();
-              final sb = StringBuffer('Year $year');
-              for (final s in spots) {
-                final idx = s.barIndex;
-                final label = idx >= 0 && idx < lineNames.length ? lineNames[idx] : 'Series ${idx + 1}';
-                sb
-                  ..writeln()
-                  ..write('$label: ${_formatSig3(s.y)}');
-              }
-              return [
-                LineTooltipItem(
-                  sb.toString(),
-                  const TextStyle(color: Colors.white, fontSize: 11, height: 1.35),
-                ),
-              ];
-            },
+            getTooltipItems: (touchedSpots) => List<LineTooltipItem?>.filled(touchedSpots.length, null),
           ),
+          getTouchedSpotIndicator: (barData, indexes) {
+            return [
+              for (final _ in indexes)
+                TouchedSpotIndicatorData(
+                  FlLine(
+                    color: AppColors.muted.withValues(alpha: 0.55),
+                    strokeWidth: 1.25,
+                  ),
+                  const FlDotData(show: false),
+                ),
+            ];
+          },
+          touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
+            if (response == null) return;
+            final spots = response.lineBarSpots;
+            if (spots == null || spots.isEmpty) return;
+            final xi = _nearestYearIndex(spots.first.x);
+            setState(() {
+              _scrubYear = kYears[xi].toDouble();
+            });
+          },
         ),
       ),
+        ),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: _chartValueOverlay(qv, mv, rv),
+          ),
+        ),
+      ],
     );
   }
 
