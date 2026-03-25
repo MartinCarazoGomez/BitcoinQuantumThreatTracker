@@ -99,31 +99,11 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         children: [
-          _topExpansionTile(
-            title: 'Compare',
-            subtitle: 'Preset scenarios vs your current strategy',
-            child: _comparePanel(),
-          ),
-          _topExpansionTile(
-            title: 'Sensitivity',
-            subtitle: 'Peak risk vs one parameter',
-            child: _sensitivityPanel(),
-            maintainState: true,
-          ),
-          _topExpansionTile(
-            title: 'Summary',
-            subtitle: 'Recommendation and CSV export',
-            child: _summaryPanel(verdict, rec, curves),
+          const Text(
+            'Race Between Quantum Capability and Bitcoin Migration',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.text),
           ),
           const SizedBox(height: 12),
-          _heroCard(),
-          const SizedBox(height: 12),
-          _paramsCard(),
-          const SizedBox(height: 12),
-          _metrics(peak, crit, m50, q50, verdict),
-          const SizedBox(height: 10),
-          _verdictBanner(verdict, rec),
-          const SizedBox(height: 16),
           Text(
             'Scrub year to explore',
             style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9), fontWeight: FontWeight.w600),
@@ -149,19 +129,20 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
               FilterChip(label: const Text('Critical line'), selected: _showCrit, onSelected: (v) => setState(() => _showCrit = v)),
             ],
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Race Between Quantum Capability and Bitcoin Migration',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.text),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Y-axis is 0–100% for every curve: quantum capability, migration progress, and risk—same scale, different meaning per color.',
-            style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
-          ),
           const SizedBox(height: 8),
           SizedBox(height: 300, child: _mainLineChart(curves, crit)),
           const SizedBox(height: 10),
+          Text(
+            'At ${_scrubYear.round()}: Q ${(qv * 100).round()}% · M ${(mv * 100).round()}% · R ${(rv * 100).round()}%',
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
+          const SizedBox(height: 12),
+          _metrics(peak, crit, m50, q50, verdict),
+          const SizedBox(height: 10),
+          _verdictBanner(verdict, rec),
+          const SizedBox(height: 16),
+          _paramsCard(),
+          const SizedBox(height: 16),
           const Text('Chart guide', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.text)),
           const SizedBox(height: 8),
           ..._chartGuideBulletWidgets(),
@@ -179,10 +160,24 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
               style: const TextStyle(fontSize: 13, height: 1.45, color: AppColors.text),
             ),
           ),
+          const SizedBox(height: 16),
+          _heroCard(),
           const SizedBox(height: 12),
-          Text(
-            'At ${_scrubYear.round()}: Q ${(qv * 100).round()}% · M ${(mv * 100).round()}% · R ${(rv * 100).round()}%',
-            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          _topExpansionTile(
+            title: 'Compare',
+            subtitle: 'Preset scenarios vs your current strategy',
+            child: _comparePanel(),
+          ),
+          _topExpansionTile(
+            title: 'Sensitivity',
+            subtitle: 'Peak risk vs one parameter',
+            child: _sensitivityPanel(),
+            maintainState: true,
+          ),
+          _topExpansionTile(
+            title: 'Summary',
+            subtitle: 'Recommendation and CSV export',
+            child: _summaryPanel(verdict, rec, curves),
           ),
         ],
       ),
@@ -312,7 +307,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       ),
       child: Text(
         'Explore the timing race between quantum capability and Bitcoin migration. '
-        'Use Compare, Sensitivity, and Summary at the top when you need them—they expand on tap.',
+        'Use Compare, Sensitivity, and Summary below for preset comparison, one-parameter sweeps, and export—they expand on tap.',
         style: TextStyle(color: AppColors.muted.withValues(alpha: 0.98), height: 1.55, fontSize: 14),
       ),
     );

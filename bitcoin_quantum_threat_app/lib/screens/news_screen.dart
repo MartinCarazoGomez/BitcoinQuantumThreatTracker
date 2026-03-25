@@ -24,6 +24,26 @@ const _kHttpJsonHeaders = {
   'Accept': 'application/json',
 };
 
+const _kPolymarketSnapshotAsset = 'assets/data/polymarket_snapshot.json';
+
+/// Flutter web serves `pubspec` assets at `<base>assets/<pubspecAssetPath>` (note the extra `assets/` segment).
+Uri _flutterWebBundledAssetUri(String pubspecAssetPath, {required bool cacheBust}) {
+  final b = Uri.base;
+  var basePath = b.path.isEmpty ? '/' : b.path;
+  if (!basePath.endsWith('/')) {
+    final i = basePath.lastIndexOf('/');
+    basePath = i >= 0 ? basePath.substring(0, i + 1) : '/';
+  }
+  final path = '${basePath}assets/$pubspecAssetPath';
+  return Uri(
+    scheme: b.scheme,
+    host: b.host,
+    port: b.hasPort ? b.port : null,
+    path: path,
+    queryParameters: cacheBust ? {'v': DateTime.now().millisecondsSinceEpoch.toString()} : null,
+  );
+}
+
 ({_PolymarketSnapshot? snap, String? err}) _parsePolymarketEventsBody(String body, {required bool fromWebSnapshot}) {
   try {
     final list = jsonDecode(body);
@@ -136,17 +156,32 @@ class _NewsScreenState extends State<NewsScreen> {
       return fromGamma();
     }
 
-    // Flutter web: Polymarket Gamma has no CORS. `http.get` against a path derived from [Uri.base]
-    // is unreliable (base often points at a loader script). Load the snapshot via [rootBundle] so
-    // Flutter resolves the asset URL with the correct --base-href.
+    // Flutter web: Polymarket Gamma has no CORS. Load the bundled JSON (CI writes it before build).
+    // Prefer [rootBundle]; if that fails (service worker / cache / older deploy), same-origin HTTP
+    // to `.../assets/assets/data/polymarket_snapshot.json` still works — unlike the Polymarket API.
     try {
-      final json = await rootBundle.loadString('assets/data/polymarket_snapshot.json');
+      final json = await rootBundle.loadString(_kPolymarketSnapshotAsset);
       return _parsePolymarketEventsBody(json, fromWebSnapshot: true);
-    } catch (e) {
-      return (
-        snap: null,
-        err: 'Web: Polymarket API is blocked by CORS. Bundled snapshot failed: $e',
-      );
+    } catch (bundleErr) {
+      try {
+        final u = _flutterWebBundledAssetUri(_kPolymarketSnapshotAsset, cacheBust: true);
+        final res = await http.get(u, headers: _kHttpJsonHeaders);
+        if (res.statusCode == 200 && res.body.isNotEmpty) {
+          return _parsePolymarketEventsBody(res.body, fromWebSnapshot: true);
+        }
+        return (
+          snap: null,
+          err: 'Web: Polymarket API is blocked by CORS.\n'
+              'Bundled snapshot: rootBundle failed ($bundleErr).\n'
+              'HTTP ${res.statusCode} for $u — try a hard refresh (Ctrl+Shift+R) or redeploy Pages.',
+        );
+      } catch (httpErr) {
+        return (
+          snap: null,
+          err: 'Web: Polymarket API is blocked by CORS.\n'
+              'Snapshot load failed (rootBundle: $bundleErr) (HTTP: $httpErr)',
+        );
+      }
     }
   }
 
@@ -253,12 +288,20 @@ class _NewsScreenState extends State<NewsScreen> {
                           'Prediction market',
                           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                         ),
-                        Text('Polymarket · tap to open', style: subtle),
+                        Text('Polymarket · tap the card to open the market in your browser', style: subtle),
                       ],
                     ),
                   ),
                   const Icon(Icons.open_in_new, size: 18, color: AppColors.muted),
                 ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Polymarket lets people trade “Yes” and “No” shares; prices are treated as crowd-implied probabilities, not official forecasts. '
+                'This market resolves from Polymarket’s published rules (whether Bitcoin stops using SHA-256 by their deadline). '
+                'That question is about mining hashing on the chain—not the same topic as quantum computers breaking ECDSA wallet signatures; see the Glossary. '
+                'On the web app, numbers come from a bundled snapshot (Polymarket’s API blocks browsers); the iOS/Android build can call the API directly.',
+                style: subtle,
               ),
               const SizedBox(height: 12),
               if (snap != null) ...[
@@ -298,8 +341,8 @@ class _NewsScreenState extends State<NewsScreen> {
                 ),
                 Text(
                   snap.fromWebSnapshot
-                      ? 'Web: bundled assets/data/polymarket_snapshot.json (Polymarket API has no CORS). '
-                          'Odds update when the site is redeployed; desktop/mobile use the live API. Not advice.'
+                      ? 'Web: bundled Polymarket snapshot (API has no CORS). '
+                          'Odds update when GitHub Pages is redeployed; iPhone app uses the live API. Not advice.'
                       : 'Snapshot ${_clockHm(snap.fetchedAt)} local · implied odds from traders (not advice)',
                   style: subtle,
                 ),
@@ -309,7 +352,10 @@ class _NewsScreenState extends State<NewsScreen> {
                   style: const TextStyle(fontSize: 12, color: AppColors.risk, height: 1.35),
                 ),
                 const SizedBox(height: 8),
-                Text('Open Polymarket in browser to view the market.', style: subtle),
+                Text(
+                  'You can still read the rules and trade on Polymarket’s site. The explanation above applies once data loads.',
+                  style: subtle,
+                ),
               ],
             ],
           ),
@@ -350,6 +396,12 @@ class _NewsScreenState extends State<NewsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Overview', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+        const SizedBox(height: 8),
+        Text(
+          'Three short topics with photos: how quantum hardware is scaling, what NIST has standardized for post-quantum crypto, '
+          'and how Bitcoin’s community discusses migration. These are background—not trading or security advice.',
+          style: TextStyle(color: AppColors.muted.withValues(alpha: 0.92), height: 1.45, fontSize: 12),
+        ),
         const SizedBox(height: 14),
         _overviewRow(
           narrow: narrow,
@@ -430,6 +482,11 @@ class _NewsScreenState extends State<NewsScreen> {
         const Text(
           'Key quantum computing milestones (log₁₀ of physical qubit count)',
           style: TextStyle(fontSize: 12, color: AppColors.muted),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Points show public hardware announcements (physical qubits, log scale). They illustrate industry momentum—not when a machine could break Bitcoin’s signatures, which depends on fault-tolerant logical qubits and algorithms like Shor’s.',
+          style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
         ),
         const SizedBox(height: 8),
         SizedBox(
@@ -551,6 +608,11 @@ class _NewsScreenState extends State<NewsScreen> {
         const Text(
           'Conceptual timeline: when quantum may outpace Bitcoin migration',
           style: TextStyle(fontSize: 12, color: AppColors.muted),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Curves come from this app’s built-in scenario math (same family as the Simulator tab). They are illustrative “what-if” lines, not predictions of real-world dates. Adjust assumptions there to explore different stories.',
+          style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
         ),
         const SizedBox(height: 8),
         SizedBox(
@@ -735,9 +797,22 @@ class _NewsScreenState extends State<NewsScreen> {
                         border: Border.all(color: AppColors.amber.withValues(alpha: 0.12)),
                         color: AppColors.surface.withValues(alpha: 0.45),
                       ),
-                      child: Text(
-                        'Current state of quantum computing, post-quantum cryptography, and Bitcoin migration.',
-                        style: TextStyle(color: AppColors.muted.withValues(alpha: 0.98), height: 1.45, fontSize: 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'About this News screen',
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.text),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'This tab mixes several kinds of information: (1) one Polymarket question with live or snapshot odds, '
+                            '(2) a visual overview of quantum computing, NIST post-quantum standards, and Bitcoin’s migration discussion, '
+                            '(3) two charts driven by this app’s educational models, and (4) recent headlines from RSS feeds. '
+                            'Nothing here is financial, legal, or security advice—use it to orient and to jump to primary sources.',
+                            style: TextStyle(color: AppColors.muted.withValues(alpha: 0.98), height: 1.45, fontSize: 13),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -752,8 +827,11 @@ class _NewsScreenState extends State<NewsScreen> {
                     const Text('Recent headlines & summaries', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
                     const SizedBox(height: 8),
                     Text(
-                      'Pull to refresh for Polymarket odds and RSS headlines. Web builds may hit CORS in some browsers. Tap a headline to open the article when a link is available.',
-                      style: TextStyle(color: AppColors.muted.withValues(alpha: 0.88), fontSize: 12, height: 1.4),
+                      'Articles are fetched from each site’s public RSS feed (Cointelegraph, Bitcoin Magazine). '
+                      'The text under a title is a shortened excerpt from the feed, not written by this app. '
+                      'Pull down to refresh both feeds and the Polymarket block. On some browsers, RSS can fail due to CORS; '
+                      'the native app usually has fewer restrictions. Tap a row to open the full article in your browser when a link exists.',
+                      style: TextStyle(color: AppColors.muted.withValues(alpha: 0.88), fontSize: 12, height: 1.45),
                     ),
                     const SizedBox(height: 14),
                     for (final e in bundle.feeds.entries) ...[

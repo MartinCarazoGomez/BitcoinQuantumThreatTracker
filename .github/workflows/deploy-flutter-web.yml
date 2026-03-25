@@ -43,6 +43,7 @@ jobs:
         run: |
           curl -fsSL "https://gamma-api.polymarket.com/events?slug=will-bitcoin-replace-sha-256-before-2027" \
             -o assets/data/polymarket_snapshot.json
+          test -s assets/data/polymarket_snapshot.json
 
       - name: Build web
         # Must match your repository name (path segment after github.io)
