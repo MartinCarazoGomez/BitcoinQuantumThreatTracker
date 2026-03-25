@@ -1,8 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webfeed/webfeed.dart';
@@ -10,19 +7,9 @@ import 'package:webfeed/webfeed.dart';
 import '../engine/news_curves.dart';
 import '../theme/app_theme.dart';
 
-/// Wikimedia requires a descriptive User-Agent; `Image.network` often omits headers on web → 429 / broken loads.
-const _kWikimediaHttpHeaders = {
-  'User-Agent': 'BitcoinQuantumThreatToolkit/1.0 (Flutter app; educational; +https://github.com)',
-  'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-};
-
-/// Direct Commons file URLs (not `/thumb/…` — Wikimedia often rate-limits dynamic thumbnails with 429).
-const _kNewsRasterImages = <String, String>{
-  'quantum': 'https://upload.wikimedia.org/wikipedia/commons/e/ec/IBM_Quantum_Computer_Demo.jpg',
-  'nist': 'https://upload.wikimedia.org/wikipedia/commons/6/65/NIST_HISTORIC_DISTRICT_MONTGOMERY_COUNTY_MARYLAND.jpg',
-};
-
-const _kBitcoinSvgUrl = 'https://upload.wikimedia.org/wikipedia/commons/4/46/Bitcoin.svg';
+const _kOverviewIbmQuantum = 'assets/images/overview_ibm_quantum.jpg';
+const _kOverviewNist = 'assets/images/overview_nist.jpg';
+const _kOverviewBitcoin = 'assets/images/overview_bitcoin.png';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -100,12 +87,8 @@ class _NewsScreenState extends State<NewsScreen> {
     }
   }
 
-  Widget _netImage(String url, String caption) {
-    return _NewsCommonsImage(url: url, caption: caption);
-  }
-
-  Widget _newsSvgImage(String url, String caption) {
-    return _NewsCommonsSvg(url: url, caption: caption);
+  Widget _overviewImage(String assetPath, String caption, {required BoxFit fit}) {
+    return _NewsOverviewImage(assetPath: assetPath, caption: caption, fit: fit);
   }
 
   Widget _overviewRow({required Widget image, required Widget text, required bool narrow}) {
@@ -139,7 +122,7 @@ class _NewsScreenState extends State<NewsScreen> {
         const SizedBox(height: 14),
         _overviewRow(
           narrow: narrow,
-          image: _netImage(_kNewsRasterImages['quantum']!, 'IBM quantum computer (demo)'),
+          image: _overviewImage(_kOverviewIbmQuantum, 'IBM Quantum System One', fit: BoxFit.cover),
           text: Text.rich(
             TextSpan(
               style: body,
@@ -156,7 +139,7 @@ class _NewsScreenState extends State<NewsScreen> {
         const SizedBox(height: 22),
         _overviewRow(
           narrow: narrow,
-          image: _netImage(_kNewsRasterImages['nist']!, 'NIST historic district (Gaithersburg)'),
+          image: _overviewImage(_kOverviewNist, 'NIST (main gate)', fit: BoxFit.cover),
           text: Text.rich(
             TextSpan(
               style: body,
@@ -182,7 +165,7 @@ class _NewsScreenState extends State<NewsScreen> {
         const SizedBox(height: 22),
         _overviewRow(
           narrow: narrow,
-          image: _newsSvgImage(_kBitcoinSvgUrl, 'Bitcoin'),
+          image: _overviewImage(_kOverviewBitcoin, 'Bitcoin', fit: BoxFit.contain),
           text: Text.rich(
             TextSpan(
               style: body,
@@ -570,131 +553,36 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 }
 
-/// Loads Commons thumbnails via [http] + [Image.memory] so User-Agent is always sent (fixes web + Wikimedia 429).
-class _NewsCommonsImage extends StatefulWidget {
-  const _NewsCommonsImage({required this.url, required this.caption});
-  final String url;
+class _NewsOverviewImage extends StatelessWidget {
+  const _NewsOverviewImage({required this.assetPath, required this.caption, required this.fit});
+  final String assetPath;
   final String caption;
+  final BoxFit fit;
 
-  @override
-  State<_NewsCommonsImage> createState() => _NewsCommonsImageState();
-}
-
-class _NewsCommonsImageState extends State<_NewsCommonsImage> {
-  Uint8List? _bytes;
-  bool _failed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final res = await http.get(Uri.parse(widget.url), headers: _kWikimediaHttpHeaders);
-      if (!mounted) return;
-      if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
-        setState(() => _bytes = res.bodyBytes);
-      } else {
-        setState(() => _failed = true);
-      }
-    } catch (_) {
-      if (mounted) setState(() => _failed = true);
-    }
-  }
+  static const _error = Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      Icon(Icons.broken_image_outlined, color: AppColors.muted),
+      SizedBox(height: 6),
+      Text(
+        'Image unavailable',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 11, color: AppColors.muted),
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            height: 140,
-            width: double.infinity,
-            child: _bytes != null
-                ? Image.memory(
-                    _bytes!,
-                    height: 140,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    gaplessPlayback: true,
-                  )
-                : _failed
-                    ? Container(
-                        height: 140,
-                        color: AppColors.surface,
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.broken_image_outlined, color: AppColors.muted),
-                            SizedBox(height: 6),
-                            Text(
-                              'Image unavailable',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 11, color: AppColors.muted),
-                            ),
-                          ],
-                        ),
-                      )
-                    : Container(
-                        height: 140,
-                        alignment: Alignment.center,
-                        color: AppColors.surface,
-                        child: const SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.amber),
-                        ),
-                      ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(widget.caption, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
-      ],
+    final image = Image.asset(
+      assetPath,
+      height: 140,
+      width: double.infinity,
+      fit: fit,
+      gaplessPlayback: true,
+      errorBuilder: (_, __, ___) => const Center(child: Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: _error)),
     );
-  }
-}
 
-class _NewsCommonsSvg extends StatefulWidget {
-  const _NewsCommonsSvg({required this.url, required this.caption});
-  final String url;
-  final String caption;
-
-  @override
-  State<_NewsCommonsSvg> createState() => _NewsCommonsSvgState();
-}
-
-class _NewsCommonsSvgState extends State<_NewsCommonsSvg> {
-  String? _svg;
-  bool _failed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final res = await http.get(Uri.parse(widget.url), headers: _kWikimediaHttpHeaders);
-      if (!mounted) return;
-      if (res.statusCode == 200 && res.body.isNotEmpty) {
-        setState(() => _svg = res.body);
-      } else {
-        setState(() => _failed = true);
-      }
-    } catch (_) {
-      if (mounted) setState(() => _failed = true);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -703,51 +591,16 @@ class _NewsCommonsSvgState extends State<_NewsCommonsSvg> {
           child: SizedBox(
             height: 140,
             width: double.infinity,
-            child: _svg != null
-                ? ColoredBox(
+            child: fit == BoxFit.cover
+                ? image
+                : ColoredBox(
                     color: AppColors.surface,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: SvgPicture.string(
-                        _svg!,
-                        fit: BoxFit.contain,
-                        alignment: Alignment.center,
-                      ),
-                    ),
-                  )
-                : _failed
-                    ? Container(
-                        height: 140,
-                        color: AppColors.surface,
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.broken_image_outlined, color: AppColors.muted),
-                            SizedBox(height: 6),
-                            Text(
-                              'Image unavailable',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 11, color: AppColors.muted),
-                            ),
-                          ],
-                        ),
-                      )
-                    : Container(
-                        height: 140,
-                        alignment: Alignment.center,
-                        color: AppColors.surface,
-                        child: const SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.amber),
-                        ),
-                      ),
+                    child: Padding(padding: const EdgeInsets.all(16), child: image),
+                  ),
           ),
         ),
         const SizedBox(height: 4),
-        Text(widget.caption, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+        Text(caption, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
       ],
     );
   }
