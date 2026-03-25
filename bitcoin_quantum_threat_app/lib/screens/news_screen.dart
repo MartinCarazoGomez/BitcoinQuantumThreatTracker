@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webfeed/webfeed.dart';
@@ -22,20 +23,6 @@ const _kHttpJsonHeaders = {
   'User-Agent': 'BitcoinQuantumThreatToolkit/1.0 (Flutter; educational)',
   'Accept': 'application/json',
 };
-
-/// Same-origin [polymarket_snapshot.json](web/polymarket_snapshot.json) for Flutter web (Polymarket API has no CORS).
-Uri _polymarketSnapshotUri({required bool cacheBust}) {
-  final b = Uri.base;
-  var path = b.path;
-  if (!path.endsWith('/')) {
-    final i = path.lastIndexOf('/');
-    path = i >= 0 ? path.substring(0, i + 1) : '/';
-  }
-  return b.replace(
-    path: '${path}polymarket_snapshot.json',
-    queryParameters: cacheBust ? {'t': DateTime.now().millisecondsSinceEpoch.toString()} : null,
-  );
-}
 
 ({_PolymarketSnapshot? snap, String? err}) _parsePolymarketEventsBody(String body, {required bool fromWebSnapshot}) {
   try {
@@ -149,31 +136,16 @@ class _NewsScreenState extends State<NewsScreen> {
       return fromGamma();
     }
 
-    // Flutter web: Polymarket Gamma does not send Access-Control-Allow-Origin, so browsers block XHR.
-    // Fall back to polymarket_snapshot.json copied next to index.html (same origin).
-    final direct = await fromGamma();
-    if (direct.snap != null) return direct;
-
+    // Flutter web: Polymarket Gamma has no CORS. `http.get` against a path derived from [Uri.base]
+    // is unreliable (base often points at a loader script). Load the snapshot via [rootBundle] so
+    // Flutter resolves the asset URL with the correct --base-href.
     try {
-      final res = await http.get(_polymarketSnapshotUri(cacheBust: true), headers: _kHttpJsonHeaders);
-      if (res.statusCode != 200) {
-        return (
-          snap: null,
-          err: 'Web: Polymarket API is blocked by CORS in the browser.\n'
-              'Same-origin snapshot returned HTTP ${res.statusCode}.',
-        );
-      }
-      final parsed = _parsePolymarketEventsBody(res.body, fromWebSnapshot: true);
-      if (parsed.snap != null) return parsed;
-      return (
-        snap: null,
-        err: 'Web CORS blocked direct API (${direct.err}). Snapshot parse: ${parsed.err}',
-      );
+      final json = await rootBundle.loadString('assets/data/polymarket_snapshot.json');
+      return _parsePolymarketEventsBody(json, fromWebSnapshot: true);
     } catch (e) {
       return (
         snap: null,
-        err: 'Web: browser blocks Polymarket API (no CORS). Same-origin snapshot failed: $e\n'
-            '(${direct.err})',
+        err: 'Web: Polymarket API is blocked by CORS. Bundled snapshot failed: $e',
       );
     }
   }
@@ -326,8 +298,8 @@ class _NewsScreenState extends State<NewsScreen> {
                 ),
                 Text(
                   snap.fromWebSnapshot
-                      ? 'Web: loaded from polymarket_snapshot.json (same origin—Polymarket blocks cross-origin calls). '
-                          'Odds refresh when the site is redeployed; desktop/mobile use the live API. Not advice.'
+                      ? 'Web: bundled assets/data/polymarket_snapshot.json (Polymarket API has no CORS). '
+                          'Odds update when the site is redeployed; desktop/mobile use the live API. Not advice.'
                       : 'Snapshot ${_clockHm(snap.fetchedAt)} local · implied odds from traders (not advice)',
                   style: subtle,
                 ),
@@ -911,7 +883,7 @@ class _PolymarketSnapshot {
   final String endDateLabel;
   final double? liquidityUsd;
   final DateTime fetchedAt;
-  /// True when data came from same-origin [polymarket_snapshot.json] (web CORS workaround).
+  /// True when data came from bundled [assets/data/polymarket_snapshot.json] (web CORS workaround).
   final bool fromWebSnapshot;
 }
 

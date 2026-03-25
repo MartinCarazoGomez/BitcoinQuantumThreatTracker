@@ -36,18 +36,17 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build web
-        # Must match your repository name (path segment after github.io)
-        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
-
-      # Polymarket Gamma API sends no Access-Control-Allow-Origin → browsers block it from github.io.
-      # Overwrite web/polymarket_snapshot.json in the build output so Flutter web can load same-origin JSON.
-      - name: Refresh Polymarket snapshot for web
+      # Polymarket Gamma API has no CORS — Flutter web loads JSON via rootBundle from this asset.
+      - name: Refresh Polymarket snapshot (before web build)
         shell: bash
         working-directory: bitcoin_quantum_threat_app
         run: |
           curl -fsSL "https://gamma-api.polymarket.com/events?slug=will-bitcoin-replace-sha-256-before-2027" \
-            -o build/web/polymarket_snapshot.json
+            -o assets/data/polymarket_snapshot.json
+
+      - name: Build web
+        # Must match your repository name (path segment after github.io)
+        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
