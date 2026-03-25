@@ -622,7 +622,7 @@ class _LegendDot extends StatelessWidget {
       ],
     );
   }
-}
+} 
 
 class _NewsItem {
   _NewsItem({required this.title, required this.summary, required this.pub, this.link});
