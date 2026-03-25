@@ -87,8 +87,8 @@ class _NewsScreenState extends State<NewsScreen> {
     }
   }
 
-  Widget _overviewImage(String assetPath, String caption, {required BoxFit fit}) {
-    return _NewsOverviewImage(assetPath: assetPath, caption: caption, fit: fit);
+  Widget _overviewImage(String assetPath, String caption) {
+    return _NewsOverviewImage(assetPath: assetPath, caption: caption);
   }
 
   Widget _overviewRow({required Widget image, required Widget text, required bool narrow}) {
@@ -122,7 +122,7 @@ class _NewsScreenState extends State<NewsScreen> {
         const SizedBox(height: 14),
         _overviewRow(
           narrow: narrow,
-          image: _overviewImage(_kOverviewIbmQuantum, 'IBM Quantum System One', fit: BoxFit.cover),
+          image: _overviewImage(_kOverviewIbmQuantum, 'IBM Quantum System One'),
           text: Text.rich(
             TextSpan(
               style: body,
@@ -139,7 +139,7 @@ class _NewsScreenState extends State<NewsScreen> {
         const SizedBox(height: 22),
         _overviewRow(
           narrow: narrow,
-          image: _overviewImage(_kOverviewNist, 'NIST (main gate)', fit: BoxFit.cover),
+          image: _overviewImage(_kOverviewNist, 'NIST (main gate)'),
           text: Text.rich(
             TextSpan(
               style: body,
@@ -165,7 +165,7 @@ class _NewsScreenState extends State<NewsScreen> {
         const SizedBox(height: 22),
         _overviewRow(
           narrow: narrow,
-          image: _overviewImage(_kOverviewBitcoin, 'Bitcoin', fit: BoxFit.contain),
+          image: _overviewImage(_kOverviewBitcoin, 'Bitcoin'),
           text: Text.rich(
             TextSpan(
               style: body,
@@ -554,10 +554,9 @@ class _NewsScreenState extends State<NewsScreen> {
 }
 
 class _NewsOverviewImage extends StatelessWidget {
-  const _NewsOverviewImage({required this.assetPath, required this.caption, required this.fit});
+  const _NewsOverviewImage({required this.assetPath, required this.caption});
   final String assetPath;
   final String caption;
-  final BoxFit fit;
 
   static const _error = Column(
     mainAxisAlignment: MainAxisAlignment.center,
@@ -574,36 +573,30 @@ class _NewsOverviewImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget raster(BoxFit boxFit) {
-      return Image.asset(
-        assetPath,
-        fit: boxFit,
-        gaplessPlayback: true,
-        errorBuilder: (_, __, ___) =>
-            const Center(child: Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: _error)),
-      );
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            height: 140,
-            width: double.infinity,
-            child: fit == BoxFit.cover
-                ? Stack(
-                    fit: StackFit.expand,
-                    children: [raster(BoxFit.cover)],
-                  )
-                : ColoredBox(
-                    color: AppColors.surface,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Center(child: raster(BoxFit.contain)),
-                    ),
+          child: ColoredBox(
+            color: AppColors.surface,
+            child: Image.asset(
+              assetPath,
+              width: double.infinity,
+              fit: BoxFit.fitWidth,
+              alignment: Alignment.topCenter,
+              gaplessPlayback: true,
+              errorBuilder: (_, __, ___) => const SizedBox(
+                height: 120,
+                width: double.infinity,
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: _error,
                   ),
+                ),
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 4),
