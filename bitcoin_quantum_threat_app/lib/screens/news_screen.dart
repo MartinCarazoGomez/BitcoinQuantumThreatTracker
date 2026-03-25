@@ -574,14 +574,15 @@ class _NewsOverviewImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final image = Image.asset(
-      assetPath,
-      height: 140,
-      width: double.infinity,
-      fit: fit,
-      gaplessPlayback: true,
-      errorBuilder: (_, __, ___) => const Center(child: Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: _error)),
-    );
+    Widget raster(BoxFit boxFit) {
+      return Image.asset(
+        assetPath,
+        fit: boxFit,
+        gaplessPlayback: true,
+        errorBuilder: (_, __, ___) =>
+            const Center(child: Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: _error)),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -592,10 +593,16 @@ class _NewsOverviewImage extends StatelessWidget {
             height: 140,
             width: double.infinity,
             child: fit == BoxFit.cover
-                ? image
+                ? Stack(
+                    fit: StackFit.expand,
+                    children: [raster(BoxFit.cover)],
+                  )
                 : ColoredBox(
                     color: AppColors.surface,
-                    child: Padding(padding: const EdgeInsets.all(16), child: image),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Center(child: raster(BoxFit.contain)),
+                    ),
                   ),
           ),
         ),
