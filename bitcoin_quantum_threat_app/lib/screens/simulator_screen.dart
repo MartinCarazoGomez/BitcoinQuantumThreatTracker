@@ -114,49 +114,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
               children: [
                 _heroCard(),
                 const SizedBox(height: 12),
-                ExpansionTile(
-                  initiallyExpanded: true,
-                  title: const Text('Parameters — Scenario presets and sliders', style: TextStyle(fontWeight: FontWeight.w700)),
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        for (var j = 0; j < scenarios.length; j++)
-                          ChoiceChip(
-                            label: Text(_scenarioShort[j]),
-                            selected: _scenario == scenarios[j],
-                            onSelected: (_) => _applyScenario(scenarios[j]),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Optimistic · Moderate · Pessimistic',
-                      style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.85)),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: _strategy,
-                      decoration: const InputDecoration(labelText: 'Post-quantum strategy'),
-                      items: strategies.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: (v) => setState(() => _strategy = v ?? _strategy),
-                    ),
-                    if (AppStrings.strategyNotes[_strategy] != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        AppStrings.strategyNotes[_strategy]!,
-                        style: TextStyle(fontSize: 12, color: AppColors.muted.withValues(alpha: 0.9)),
-                      ),
-                    ],
-                    // Divisions match Streamlit step 0.01 for floats; integer sliders use one step per year.
-                    _slider('Quantum steepness', 'quantum_steepness', 0.15, 0.80, 65),
-                    _slider('Quantum break year (50%)', 'break_year', 2032, 2050, 18, isInt: true),
-                    _slider('Migration start year', 'migration_start', 2026, 2050, 24, isInt: true),
-                    _slider('Migration speed', 'migration_speed', 0.15, 0.90, 75),
-                    _slider('Vulnerable share', 'vulnerable_share', 0.20, 1.00, 80),
-                    _slider('Crisis threshold', 'crisis_threshold', 0.10, 0.80, 70),
-                  ],
-                ),
+                _paramsCard(),
                 const SizedBox(height: 12),
                 _metrics(peak, crit, m50, q50, verdict),
                 const SizedBox(height: 10),
@@ -167,12 +125,14 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
                   style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9), fontWeight: FontWeight.w600),
                 ),
                 Slider(
-                  value: _scrubYear,
+                  value: _scrubYear.clamp(kYears.first.toDouble(), kYears.last.toDouble()),
                   min: kYears.first.toDouble(),
                   max: kYears.last.toDouble(),
-                  divisions: kYears.length - 1,
                   label: _scrubYear.round().toString(),
-                  onChanged: (v) => setState(() => _scrubYear = v),
+                  onChanged: (v) => setState(() => _scrubYear = v.round().toDouble().clamp(
+                        kYears.first.toDouble(),
+                        kYears.last.toDouble(),
+                      )),
                 ),
                 Wrap(
                   spacing: 6,
@@ -233,6 +193,61 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _paramsCard() {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('Parameters', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text('Scenario presets and sliders'),
+            ),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (var j = 0; j < scenarios.length; j++)
+                  ChoiceChip(
+                    label: Text(_scenarioShort[j]),
+                    selected: _scenario == scenarios[j],
+                    onSelected: (_) => _applyScenario(scenarios[j]),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Optimistic · Moderate · Pessimistic',
+              style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.85)),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: _strategy,
+              decoration: const InputDecoration(labelText: 'Post-quantum strategy'),
+              items: strategies.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: (v) => setState(() => _strategy = v ?? _strategy),
+            ),
+            if (AppStrings.strategyNotes[_strategy] != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                AppStrings.strategyNotes[_strategy]!,
+                style: TextStyle(fontSize: 12, color: AppColors.muted.withValues(alpha: 0.9)),
+              ),
+            ],
+            _slider('Quantum steepness', 'quantum_steepness', 0.15, 0.80),
+            _slider('Quantum break year (50%)', 'break_year', 2032, 2050, isInt: true),
+            _slider('Migration start year', 'migration_start', 2026, 2050, isInt: true),
+            _slider('Migration speed', 'migration_speed', 0.15, 0.90),
+            _slider('Vulnerable share', 'vulnerable_share', 0.20, 1.00),
+            _slider('Crisis threshold', 'crisis_threshold', 0.10, 0.80),
+          ],
+        ),
       ),
     );
   }
@@ -389,21 +404,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
         ),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
-            axisNameWidget: Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                'Level (0–100%)',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.muted.withValues(alpha: 0.95),
-                ),
-              ),
-            ),
-            axisNameSize: 18,
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 40,
+              reservedSize: 38,
               interval: 0.2,
               getTitlesWidget: (value, meta) {
                 final p = (value.clamp(0.0, 1.0) * 100).round();
@@ -418,14 +421,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
             ),
           ),
           bottomTitles: AxisTitles(
-            axisNameWidget: Text(
-              'Year',
-              style: TextStyle(fontSize: 10, color: AppColors.muted.withValues(alpha: 0.9)),
-            ),
-            axisNameSize: 14,
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 28,
+              reservedSize: 26,
               interval: 5,
               getTitlesWidget: (v, m) => Text(v.toInt().toString(), style: const TextStyle(fontSize: 10, color: AppColors.muted)),
             ),
@@ -544,21 +542,29 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
     );
   }
 
-  Widget _slider(String label, String key, double min, double max, int divisions, {bool isInt = false}) {
+  /// Continuous slider; values snap to match Streamlit (2 decimals / whole years). Avoids broken discrete `divisions` on web.
+  Widget _slider(String label, String key, double min, double max, {bool isInt = false}) {
     final v = _params[key];
-    final double cur = isInt ? (v as int).toDouble() : (v as num).toDouble();
+    double cur = isInt ? (v as int).toDouble() : (v as num).toDouble();
+    cur = cur.clamp(min, max);
+    final minI = min.round();
+    final maxI = max.round();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('$label: ${isInt ? cur.round() : cur.toStringAsFixed(2)}'),
         Slider(
-          value: cur.clamp(min, max),
+          value: cur,
           min: min,
           max: max,
-          divisions: divisions,
           onChanged: (nv) {
             setState(() {
-              _params[key] = isInt ? nv.round() : double.parse(nv.toStringAsFixed(2));
+              if (isInt) {
+                _params[key] = nv.round().clamp(minI, maxI);
+              } else {
+                final x = nv.clamp(min, max);
+                _params[key] = double.parse(x.toStringAsFixed(2));
+              }
             });
           },
         ),
