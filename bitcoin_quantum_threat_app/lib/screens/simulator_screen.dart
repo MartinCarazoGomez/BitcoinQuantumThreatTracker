@@ -103,98 +103,161 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
     final rv = curves.risk[i];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Risk Simulator')),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      appBar: AppBar(
+        title: const Text('Risk Simulator'),
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          tabs: const [
+            Tab(text: 'Chart'),
+            Tab(text: 'Compare'),
+            Tab(text: 'Sensitivity'),
+            Tab(text: 'Summary'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          Expanded(
-            flex: 5,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              children: [
-                _heroCard(),
-                const SizedBox(height: 12),
-                _paramsCard(),
-                const SizedBox(height: 12),
-                _metrics(peak, crit, m50, q50, verdict),
-                const SizedBox(height: 10),
-                _verdictBanner(verdict, rec),
-                const SizedBox(height: 16),
-                Text(
-                  'Scrub year to explore',
-                  style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9), fontWeight: FontWeight.w600),
-                ),
-                Slider(
-                  value: _scrubYear.clamp(kYears.first.toDouble(), kYears.last.toDouble()),
-                  min: kYears.first.toDouble(),
-                  max: kYears.last.toDouble(),
-                  label: _scrubYear.round().toString(),
-                  onChanged: (v) => setState(() => _scrubYear = v.round().toDouble().clamp(
-                        kYears.first.toDouble(),
-                        kYears.last.toDouble(),
-                      )),
-                ),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    FilterChip(label: const Text('Quantum'), selected: _showQ, onSelected: (v) => setState(() => _showQ = v)),
-                    FilterChip(label: const Text('Migration'), selected: _showM, onSelected: (v) => setState(() => _showM = v)),
-                    FilterChip(label: const Text('Risk'), selected: _showR, onSelected: (v) => setState(() => _showR = v)),
-                    FilterChip(label: const Text('Danger zone'), selected: _showDanger, onSelected: (v) => setState(() => _showDanger = v)),
-                    FilterChip(label: const Text('Critical line'), selected: _showCrit, onSelected: (v) => setState(() => _showCrit = v)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Race Between Quantum Capability and Bitcoin Migration',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.text),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Y-axis is 0–100% for every curve: quantum capability, migration progress, and risk—same scale, different meaning per color.',
-                  style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(height: 300, child: _mainLineChart(curves, crit)),
-                const SizedBox(height: 8),
-                Text(
-                  'At ${_scrubYear.round()}: Q ${(qv * 100).round()}% · M ${(mv * 100).round()}% · R ${(rv * 100).round()}%',
-                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
-                ),
-              ],
-            ),
+          _chartTab(
+            curves: curves,
+            crit: crit,
+            peak: peak,
+            verdict: verdict,
+            rec: rec,
+            m50: m50,
+            q50: q50,
+            qv: qv,
+            mv: mv,
+            rv: rv,
           ),
-          Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
-          Material(
-            color: AppColors.surface.withValues(alpha: 0.5),
-            child: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              tabs: const [
-                Tab(text: 'Chart Guide'),
-                Tab(text: 'Compare'),
-                Tab(text: 'Sensitivity'),
-                Tab(text: 'Summary'),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _chartGuideTab(crit),
-                _compareTab(),
-                _sensitivityTab(),
-                _summaryTab(verdict, rec, curves),
-              ],
-            ),
-          ),
+          _compareTab(),
+          _sensitivityTab(),
+          _summaryTab(verdict, rec, curves),
         ],
       ),
     );
+  }
+
+  Widget _chartTab({
+    required CurveResult curves,
+    required CriticalResult crit,
+    required double peak,
+    required String verdict,
+    required String rec,
+    required int? m50,
+    required int? q50,
+    required double qv,
+    required double mv,
+    required double rv,
+  }) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: [
+        _heroCard(),
+        const SizedBox(height: 12),
+        _paramsCard(),
+        const SizedBox(height: 12),
+        _metrics(peak, crit, m50, q50, verdict),
+        const SizedBox(height: 10),
+        _verdictBanner(verdict, rec),
+        const SizedBox(height: 16),
+        Text(
+          'Scrub year to explore',
+          style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9), fontWeight: FontWeight.w600),
+        ),
+        Slider(
+          value: _scrubYear.clamp(kYears.first.toDouble(), kYears.last.toDouble()),
+          min: kYears.first.toDouble(),
+          max: kYears.last.toDouble(),
+          label: _scrubYear.round().toString(),
+          onChanged: (v) => setState(() => _scrubYear = v.round().toDouble().clamp(
+                kYears.first.toDouble(),
+                kYears.last.toDouble(),
+              )),
+        ),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            FilterChip(label: const Text('Quantum'), selected: _showQ, onSelected: (v) => setState(() => _showQ = v)),
+            FilterChip(label: const Text('Migration'), selected: _showM, onSelected: (v) => setState(() => _showM = v)),
+            FilterChip(label: const Text('Risk'), selected: _showR, onSelected: (v) => setState(() => _showR = v)),
+            FilterChip(label: const Text('Danger zone'), selected: _showDanger, onSelected: (v) => setState(() => _showDanger = v)),
+            FilterChip(label: const Text('Critical line'), selected: _showCrit, onSelected: (v) => setState(() => _showCrit = v)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Race Between Quantum Capability and Bitcoin Migration',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.text),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Y-axis is 0–100% for every curve: quantum capability, migration progress, and risk—same scale, different meaning per color.',
+          style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(height: 300, child: _mainLineChart(curves, crit)),
+        const SizedBox(height: 8),
+        Text(
+          'At ${_scrubYear.round()}: Q ${(qv * 100).round()}% · M ${(mv * 100).round()}% · R ${(rv * 100).round()}%',
+          style: const TextStyle(fontSize: 12, color: AppColors.muted),
+        ),
+        const SizedBox(height: 20),
+        const Divider(height: 1),
+        const SizedBox(height: 16),
+        const Text('Chart guide', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.text)),
+        const SizedBox(height: 10),
+        ..._chartGuideBulletWidgets(),
+        const SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: const Color(0xFF1e3a5f).withValues(alpha: 0.55),
+            border: Border.all(color: AppColors.quantum.withValues(alpha: 0.25)),
+          ),
+          child: Text(
+            'Logic: ${crit.reason}',
+            style: const TextStyle(fontSize: 13, height: 1.45, color: AppColors.text),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Bullet paragraphs for the chart guide (reused in Chart tab).
+  List<Widget> _chartGuideBulletWidgets() {
+    return [
+      for (final line in AppStrings.chartGuideBullets)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Builder(
+            builder: (context) {
+              const sep = ' — ';
+              final i = line.indexOf(sep);
+              if (i < 0) {
+                return Text(line, style: const TextStyle(height: 1.45, color: AppColors.text));
+              }
+              final head = line.substring(0, i);
+              final tail = line.substring(i + sep.length);
+              return Text.rich(
+                TextSpan(
+                  style: const TextStyle(height: 1.45),
+                  children: [
+                    TextSpan(text: head, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.text)),
+                    const TextSpan(text: sep),
+                    TextSpan(text: tail, style: TextStyle(color: AppColors.muted.withValues(alpha: 0.95))),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+    ];
   }
 
   Widget _paramsCard() {
@@ -458,53 +521,6 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
           ),
         ),
       ),
-    );
-  }
-
-  Widget _chartGuideTab(CriticalResult crit) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        for (final line in AppStrings.chartGuideBullets)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Builder(
-              builder: (context) {
-                const sep = ' — ';
-                final i = line.indexOf(sep);
-                if (i < 0) {
-                  return Text(line, style: const TextStyle(height: 1.45, color: AppColors.text));
-                }
-                final head = line.substring(0, i);
-                final tail = line.substring(i + sep.length);
-                return Text.rich(
-                  TextSpan(
-                    style: const TextStyle(height: 1.45),
-                    children: [
-                      TextSpan(text: head, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.text)),
-                      const TextSpan(text: sep),
-                      TextSpan(text: tail, style: TextStyle(color: AppColors.muted.withValues(alpha: 0.95))),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        const SizedBox(height: 4),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            color: const Color(0xFF1e3a5f).withValues(alpha: 0.55),
-            border: Border.all(color: AppColors.quantum.withValues(alpha: 0.25)),
-          ),
-          child: Text(
-            'Logic: ${crit.reason}',
-            style: const TextStyle(fontSize: 13, height: 1.45, color: AppColors.text),
-          ),
-        ),
-      ],
     );
   }
 
