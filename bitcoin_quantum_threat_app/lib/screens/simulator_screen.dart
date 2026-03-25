@@ -33,8 +33,7 @@ class SimulatorScreen extends StatefulWidget {
   State<SimulatorScreen> createState() => _SimulatorScreenState();
 }
 
-class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _SimulatorScreenState extends State<SimulatorScreen> {
   String _scenario = 'Moderate';
   String _strategy = 'Hybrid';
   late Map<String, dynamic> _params;
@@ -51,15 +50,8 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
     _params = Map<String, dynamic>.from(scenarioDefaults(_scenario));
     _scrubYear = kYears[kYears.length ~/ 2].toDouble();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   void _applyScenario(String name) {
@@ -103,133 +95,121 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
     final rv = curves.risk[i];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Risk Simulator'),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          tabs: const [
-            Tab(text: 'Chart'),
-            Tab(text: 'Compare'),
-            Tab(text: 'Sensitivity'),
-            Tab(text: 'Summary'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
+      appBar: AppBar(title: const Text('Risk Simulator')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         children: [
-          _chartTab(
-            curves: curves,
-            crit: crit,
-            peak: peak,
-            verdict: verdict,
-            rec: rec,
-            m50: m50,
-            q50: q50,
-            qv: qv,
-            mv: mv,
-            rv: rv,
+          _topExpansionTile(
+            title: 'Compare',
+            subtitle: 'Preset scenarios vs your current strategy',
+            child: _comparePanel(),
           ),
-          _compareTab(),
-          _sensitivityTab(),
-          _summaryTab(verdict, rec, curves),
+          _topExpansionTile(
+            title: 'Sensitivity',
+            subtitle: 'Peak risk vs one parameter',
+            child: _sensitivityPanel(),
+            maintainState: true,
+          ),
+          _topExpansionTile(
+            title: 'Summary',
+            subtitle: 'Recommendation and CSV export',
+            child: _summaryPanel(verdict, rec, curves),
+          ),
+          const SizedBox(height: 12),
+          _heroCard(),
+          const SizedBox(height: 12),
+          _paramsCard(),
+          const SizedBox(height: 12),
+          _metrics(peak, crit, m50, q50, verdict),
+          const SizedBox(height: 10),
+          _verdictBanner(verdict, rec),
+          const SizedBox(height: 16),
+          Text(
+            'Scrub year to explore',
+            style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9), fontWeight: FontWeight.w600),
+          ),
+          Slider(
+            value: _scrubYear.clamp(kYears.first.toDouble(), kYears.last.toDouble()),
+            min: kYears.first.toDouble(),
+            max: kYears.last.toDouble(),
+            label: _scrubYear.round().toString(),
+            onChanged: (v) => setState(() => _scrubYear = v.round().toDouble().clamp(
+                  kYears.first.toDouble(),
+                  kYears.last.toDouble(),
+                )),
+          ),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              FilterChip(label: const Text('Quantum'), selected: _showQ, onSelected: (v) => setState(() => _showQ = v)),
+              FilterChip(label: const Text('Migration'), selected: _showM, onSelected: (v) => setState(() => _showM = v)),
+              FilterChip(label: const Text('Risk'), selected: _showR, onSelected: (v) => setState(() => _showR = v)),
+              FilterChip(label: const Text('Danger zone'), selected: _showDanger, onSelected: (v) => setState(() => _showDanger = v)),
+              FilterChip(label: const Text('Critical line'), selected: _showCrit, onSelected: (v) => setState(() => _showCrit = v)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Race Between Quantum Capability and Bitcoin Migration',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.text),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Y-axis is 0–100% for every curve: quantum capability, migration progress, and risk—same scale, different meaning per color.',
+            style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(height: 300, child: _mainLineChart(curves, crit)),
+          const SizedBox(height: 10),
+          const Text('Chart guide', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.text)),
+          const SizedBox(height: 8),
+          ..._chartGuideBulletWidgets(),
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              color: const Color(0xFF1e3a5f).withValues(alpha: 0.55),
+              border: Border.all(color: AppColors.quantum.withValues(alpha: 0.25)),
+            ),
+            child: Text(
+              'Logic: ${crit.reason}',
+              style: const TextStyle(fontSize: 13, height: 1.45, color: AppColors.text),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'At ${_scrubYear.round()}: Q ${(qv * 100).round()}% · M ${(mv * 100).round()}% · R ${(rv * 100).round()}%',
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
         ],
       ),
     );
   }
 
-  Widget _chartTab({
-    required CurveResult curves,
-    required CriticalResult crit,
-    required double peak,
-    required String verdict,
-    required String rec,
-    required int? m50,
-    required int? q50,
-    required double qv,
-    required double mv,
-    required double rv,
+  Widget _topExpansionTile({
+    required String title,
+    required String subtitle,
+    required Widget child,
+    bool maintainState = false,
   }) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      children: [
-        _heroCard(),
-        const SizedBox(height: 12),
-        _paramsCard(),
-        const SizedBox(height: 12),
-        _metrics(peak, crit, m50, q50, verdict),
-        const SizedBox(height: 10),
-        _verdictBanner(verdict, rec),
-        const SizedBox(height: 16),
-        Text(
-          'Scrub year to explore',
-          style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9), fontWeight: FontWeight.w600),
-        ),
-        Slider(
-          value: _scrubYear.clamp(kYears.first.toDouble(), kYears.last.toDouble()),
-          min: kYears.first.toDouble(),
-          max: kYears.last.toDouble(),
-          label: _scrubYear.round().toString(),
-          onChanged: (v) => setState(() => _scrubYear = v.round().toDouble().clamp(
-                kYears.first.toDouble(),
-                kYears.last.toDouble(),
-              )),
-        ),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            FilterChip(label: const Text('Quantum'), selected: _showQ, onSelected: (v) => setState(() => _showQ = v)),
-            FilterChip(label: const Text('Migration'), selected: _showM, onSelected: (v) => setState(() => _showM = v)),
-            FilterChip(label: const Text('Risk'), selected: _showR, onSelected: (v) => setState(() => _showR = v)),
-            FilterChip(label: const Text('Danger zone'), selected: _showDanger, onSelected: (v) => setState(() => _showDanger = v)),
-            FilterChip(label: const Text('Critical line'), selected: _showCrit, onSelected: (v) => setState(() => _showCrit = v)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'Race Between Quantum Capability and Bitcoin Migration',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.text),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Y-axis is 0–100% for every curve: quantum capability, migration progress, and risk—same scale, different meaning per color.',
-          style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(height: 300, child: _mainLineChart(curves, crit)),
-        const SizedBox(height: 8),
-        Text(
-          'At ${_scrubYear.round()}: Q ${(qv * 100).round()}% · M ${(mv * 100).round()}% · R ${(rv * 100).round()}%',
-          style: const TextStyle(fontSize: 12, color: AppColors.muted),
-        ),
-        const SizedBox(height: 20),
-        const Divider(height: 1),
-        const SizedBox(height: 16),
-        const Text('Chart guide', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.text)),
-        const SizedBox(height: 10),
-        ..._chartGuideBulletWidgets(),
-        const SizedBox(height: 4),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            color: const Color(0xFF1e3a5f).withValues(alpha: 0.55),
-            border: Border.all(color: AppColors.quantum.withValues(alpha: 0.25)),
-          ),
-          child: Text(
-            'Logic: ${crit.reason}',
-            style: const TextStyle(fontSize: 13, height: 1.45, color: AppColors.text),
-          ),
-        ),
-      ],
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        maintainState: maintainState,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.muted.withValues(alpha: 0.9))),
+        children: [child],
+      ),
     );
   }
 
-  /// Bullet paragraphs for the chart guide (reused in Chart tab).
+  /// Bullet paragraphs for the chart guide (below the main chart).
   List<Widget> _chartGuideBulletWidgets() {
     return [
       for (final line in AppStrings.chartGuideBullets)
@@ -332,7 +312,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
       ),
       child: Text(
         'Explore the timing race between quantum capability and Bitcoin migration. '
-        'Adjust parameters below, scrub the chart by year, and compare scenarios in the tabs.',
+        'Use Compare, Sensitivity, and Summary at the top when you need them—they expand on tap.',
         style: TextStyle(color: AppColors.muted.withValues(alpha: 0.98), height: 1.55, fontSize: 14),
       ),
     );
@@ -588,13 +568,14 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
     );
   }
 
-  Widget _compareTab() {
+  Widget _comparePanel() {
     final rows = runScenarioComparison(kYears, _strategy);
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         const Text('Preset scenarios vs your current strategy.', style: TextStyle(color: AppColors.muted)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
@@ -623,7 +604,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         const Text(
           'Preset defaults for each scenario with your current migration strategy.',
           style: TextStyle(fontSize: 12, color: AppColors.muted),
@@ -632,11 +613,12 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
     );
   }
 
-  Widget _sensitivityTab() {
+  Widget _sensitivityPanel() {
     final (xVals, yVals) = runSensitivityAnalysis(_params, kYears, _sensParam, _strategy);
     final spots = [for (var i = 0; i < xVals.length; i++) FlSpot(xVals[i], yVals[i])];
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
         DropdownButtonFormField<String>(
           value: _sensParam,
@@ -649,9 +631,9 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
           ],
           onChanged: (v) => setState(() => _sensParam = v ?? _sensParam),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         SizedBox(
-          height: 260,
+          height: 220,
           child: LineChart(
             LineChartData(
               minY: 0,
@@ -699,17 +681,18 @@ class _SimulatorScreenState extends State<SimulatorScreen> with SingleTickerProv
     );
   }
 
-  Widget _summaryTab(String verdict, String rec, CurveResult curves) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
+  Widget _summaryPanel(String verdict, String rec, CurveResult curves) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text('Recommendation: $rec', style: const TextStyle(height: 1.45, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         const Text(
           'Assumptions — Scenario model, not prediction. Conclusions depend on break-year timing, migration speed, and vulnerable share.',
           style: TextStyle(color: AppColors.muted, height: 1.4),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         FilledButton.icon(
           onPressed: () {
             final sb = StringBuffer();
