@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -21,6 +22,91 @@ const _kHttpJsonHeaders = {
   'User-Agent': 'BitcoinQuantumThreatToolkit/1.0 (Flutter; educational)',
   'Accept': 'application/json',
 };
+
+/// Same-origin [polymarket_snapshot.json](web/polymarket_snapshot.json) for Flutter web (Polymarket API has no CORS).
+Uri _polymarketSnapshotUri({required bool cacheBust}) {
+  final b = Uri.base;
+  var path = b.path;
+  if (!path.endsWith('/')) {
+    final i = path.lastIndexOf('/');
+    path = i >= 0 ? path.substring(0, i + 1) : '/';
+  }
+  return b.replace(
+    path: '${path}polymarket_snapshot.json',
+    queryParameters: cacheBust ? {'t': DateTime.now().millisecondsSinceEpoch.toString()} : null,
+  );
+}
+
+({_PolymarketSnapshot? snap, String? err}) _parsePolymarketEventsBody(String body, {required bool fromWebSnapshot}) {
+  try {
+    final list = jsonDecode(body);
+    if (list is! List || list.isEmpty) {
+      return (snap: null, err: 'No market data returned');
+    }
+    final event = list.first;
+    if (event is! Map<String, dynamic>) {
+      return (snap: null, err: 'Unexpected API shape');
+    }
+    final markets = event['markets'];
+    if (markets is! List || markets.isEmpty) {
+      return (snap: null, err: 'Market listing empty');
+    }
+    final m = markets.first;
+    if (m is! Map<String, dynamic>) {
+      return (snap: null, err: 'Unexpected market shape');
+    }
+    final question = m['question'] as String? ?? 'Will Bitcoin replace SHA-256 before 2027?';
+    final outcomesRaw = m['outcomes'];
+    final pricesRaw = m['outcomePrices'];
+    final outcomes = outcomesRaw is String
+        ? jsonDecode(outcomesRaw) as List<dynamic>
+        : outcomesRaw is List
+            ? outcomesRaw
+            : null;
+    final prices = pricesRaw is String
+        ? jsonDecode(pricesRaw) as List<dynamic>
+        : pricesRaw is List
+            ? pricesRaw
+            : null;
+    if (outcomes == null || prices == null || outcomes.length != prices.length) {
+      return (snap: null, err: 'Could not parse outcomes/prices');
+    }
+    double? yesP;
+    double? noP;
+    for (var i = 0; i < outcomes.length; i++) {
+      final label = outcomes[i].toString().toLowerCase().trim();
+      final p = double.tryParse(prices[i].toString());
+      if (p == null) continue;
+      if (label == 'yes') yesP = p;
+      if (label == 'no') noP = p;
+    }
+    yesP ??= double.tryParse(prices.first.toString());
+    noP ??= (prices.length > 1) ? double.tryParse(prices[1].toString()) : null;
+    if (yesP == null) {
+      return (snap: null, err: 'Could not read implied odds');
+    }
+    yesP = yesP.clamp(0.0, 1.0);
+    noP = (noP ?? (1.0 - yesP)).clamp(0.0, 1.0);
+    final liq = (m['liquidityNum'] as num?)?.toDouble() ??
+        double.tryParse(m['liquidity']?.toString() ?? '') ??
+        (event['liquidity'] as num?)?.toDouble();
+    final endLabel = (m['endDateIso'] as String?)?.trim();
+    return (
+      snap: _PolymarketSnapshot(
+        question: question,
+        yesProbability: yesP,
+        noProbability: noP,
+        endDateLabel: (endLabel != null && endLabel.isNotEmpty) ? endLabel : '2026-12-31',
+        liquidityUsd: liq,
+        fetchedAt: DateTime.now(),
+        fromWebSnapshot: fromWebSnapshot,
+      ),
+      err: null
+    );
+  } catch (e) {
+    return (snap: null, err: e.toString());
+  }
+}
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -47,76 +133,48 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   Future<({_PolymarketSnapshot? snap, String? err})> _fetchPolymarket() async {
+    Future<({_PolymarketSnapshot? snap, String? err})> fromGamma() async {
+      try {
+        final res = await http.get(Uri.parse(_kPolymarketGammaUrl), headers: _kHttpJsonHeaders);
+        if (res.statusCode != 200) {
+          return (snap: null, err: 'Polymarket API HTTP ${res.statusCode}');
+        }
+        return _parsePolymarketEventsBody(res.body, fromWebSnapshot: false);
+      } catch (e) {
+        return (snap: null, err: e.toString());
+      }
+    }
+
+    if (!kIsWeb) {
+      return fromGamma();
+    }
+
+    // Flutter web: Polymarket Gamma does not send Access-Control-Allow-Origin, so browsers block XHR.
+    // Fall back to polymarket_snapshot.json copied next to index.html (same origin).
+    final direct = await fromGamma();
+    if (direct.snap != null) return direct;
+
     try {
-      final res = await http.get(Uri.parse(_kPolymarketGammaUrl), headers: _kHttpJsonHeaders);
+      final res = await http.get(_polymarketSnapshotUri(cacheBust: true), headers: _kHttpJsonHeaders);
       if (res.statusCode != 200) {
-        return (snap: null, err: 'Polymarket API HTTP ${res.statusCode}');
+        return (
+          snap: null,
+          err: 'Web: Polymarket API is blocked by CORS in the browser.\n'
+              'Same-origin snapshot returned HTTP ${res.statusCode}.',
+        );
       }
-      final list = jsonDecode(res.body);
-      if (list is! List || list.isEmpty) {
-        return (snap: null, err: 'No market data returned');
-      }
-      final event = list.first;
-      if (event is! Map<String, dynamic>) {
-        return (snap: null, err: 'Unexpected API shape');
-      }
-      final markets = event['markets'];
-      if (markets is! List || markets.isEmpty) {
-        return (snap: null, err: 'Market listing empty');
-      }
-      final m = markets.first;
-      if (m is! Map<String, dynamic>) {
-        return (snap: null, err: 'Unexpected market shape');
-      }
-      final question = m['question'] as String? ?? 'Will Bitcoin replace SHA-256 before 2027?';
-      final outcomesRaw = m['outcomes'];
-      final pricesRaw = m['outcomePrices'];
-      final outcomes = outcomesRaw is String
-          ? jsonDecode(outcomesRaw) as List<dynamic>
-          : outcomesRaw is List
-              ? outcomesRaw
-              : null;
-      final prices = pricesRaw is String
-          ? jsonDecode(pricesRaw) as List<dynamic>
-          : pricesRaw is List
-              ? pricesRaw
-              : null;
-      if (outcomes == null || prices == null || outcomes.length != prices.length) {
-        return (snap: null, err: 'Could not parse outcomes/prices');
-      }
-      double? yesP;
-      double? noP;
-      for (var i = 0; i < outcomes.length; i++) {
-        final label = outcomes[i].toString().toLowerCase().trim();
-        final p = double.tryParse(prices[i].toString());
-        if (p == null) continue;
-        if (label == 'yes') yesP = p;
-        if (label == 'no') noP = p;
-      }
-      yesP ??= double.tryParse(prices.first.toString());
-      noP ??= (prices.length > 1) ? double.tryParse(prices[1].toString()) : null;
-      if (yesP == null) {
-        return (snap: null, err: 'Could not read implied odds');
-      }
-      yesP = yesP.clamp(0.0, 1.0);
-      noP = (noP ?? (1.0 - yesP)).clamp(0.0, 1.0);
-      final liq = (m['liquidityNum'] as num?)?.toDouble() ??
-          double.tryParse(m['liquidity']?.toString() ?? '') ??
-          (event['liquidity'] as num?)?.toDouble();
-      final endLabel = (m['endDateIso'] as String?)?.trim();
+      final parsed = _parsePolymarketEventsBody(res.body, fromWebSnapshot: true);
+      if (parsed.snap != null) return parsed;
       return (
-        snap: _PolymarketSnapshot(
-          question: question,
-          yesProbability: yesP,
-          noProbability: noP,
-          endDateLabel: (endLabel != null && endLabel.isNotEmpty) ? endLabel : '2026-12-31',
-          liquidityUsd: liq,
-          fetchedAt: DateTime.now(),
-        ),
-        err: null
+        snap: null,
+        err: 'Web CORS blocked direct API (${direct.err}). Snapshot parse: ${parsed.err}',
       );
     } catch (e) {
-      return (snap: null, err: e.toString());
+      return (
+        snap: null,
+        err: 'Web: browser blocks Polymarket API (no CORS). Same-origin snapshot failed: $e\n'
+            '(${direct.err})',
+      );
     }
   }
 
@@ -267,7 +325,10 @@ class _NewsScreenState extends State<NewsScreen> {
                   style: subtle,
                 ),
                 Text(
-                  'Snapshot ${_clockHm(snap.fetchedAt)} local · implied odds from traders (not advice)',
+                  snap.fromWebSnapshot
+                      ? 'Web: loaded from polymarket_snapshot.json (same origin—Polymarket blocks cross-origin calls). '
+                          'Odds refresh when the site is redeployed; desktop/mobile use the live API. Not advice.'
+                      : 'Snapshot ${_clockHm(snap.fetchedAt)} local · implied odds from traders (not advice)',
                   style: subtle,
                 ),
               ] else ...[
@@ -842,6 +903,7 @@ class _PolymarketSnapshot {
     required this.endDateLabel,
     this.liquidityUsd,
     required this.fetchedAt,
+    this.fromWebSnapshot = false,
   });
   final String question;
   final double yesProbability;
@@ -849,6 +911,8 @@ class _PolymarketSnapshot {
   final String endDateLabel;
   final double? liquidityUsd;
   final DateTime fetchedAt;
+  /// True when data came from same-origin [polymarket_snapshot.json] (web CORS workaround).
+  final bool fromWebSnapshot;
 }
 
 class _NewsScreenData {
