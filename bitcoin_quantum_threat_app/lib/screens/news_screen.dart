@@ -573,29 +573,38 @@ class _NewsOverviewImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // `start` would not give the image the row's max width; `fitWidth` then gets bad constraints.
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: ColoredBox(
             color: AppColors.surface,
-            child: Image.asset(
-              assetPath,
-              width: double.infinity,
-              fit: BoxFit.fitWidth,
-              alignment: Alignment.topCenter,
-              gaplessPlayback: true,
-              errorBuilder: (_, __, ___) => const SizedBox(
-                height: 120,
-                width: double.infinity,
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: _error,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final w = constraints.maxWidth;
+                if (!w.isFinite || w <= 0) {
+                  return const SizedBox(height: 120, child: Center(child: _error));
+                }
+                return Image.asset(
+                  assetPath,
+                  width: w,
+                  fit: BoxFit.fitWidth,
+                  alignment: Alignment.topCenter,
+                  gaplessPlayback: true,
+                  errorBuilder: (_, __, ___) => SizedBox(
+                    height: 120,
+                    width: w,
+                    child: const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: _error,
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ),
@@ -622,7 +631,7 @@ class _LegendDot extends StatelessWidget {
       ],
     );
   }
-} 
+}
 
 class _NewsItem {
   _NewsItem({required this.title, required this.summary, required this.pub, this.link});
