@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 
 /// One daily sample: UTC time and close price (USD or USDT depending on source).
@@ -10,10 +11,23 @@ class BtcPricePoint {
   final double usd;
 }
 
+/// Result of [loadBtcUsdHistory]: live API data or bundled fallback when the network fails.
+class BtcUsdHistoryResult {
+  const BtcUsdHistoryResult({required this.points, required this.fromBundledFallback});
+
+  final List<BtcPricePoint> points;
+  final bool fromBundledFallback;
+}
+
 const _kUa = {
   'User-Agent': 'BitcoinQuantumThreatToolkit/1.0 (Flutter; educational)',
   'Accept': 'application/json',
 };
+
+/// Bundled JSON has at most this many daily samples (see `scripts/export_btc_fallback_json.py`).
+const int kBtcBundledFallbackMaxDays = 2000;
+
+const String _kBtcFallbackAsset = 'assets/data/btc_price_fallback_2000.json';
 
 /// ~15 years — matches server [BTC_HISTORY_MAX_DAYS] (Binance paginates beyond 1000).
 const int kBtcPriceMaxFetchDays = 5478;
@@ -24,10 +38,67 @@ const int kBtcPriceDefaultWindowDays = 365;
 /// Minimum window (~1 month), when enough data exists.
 const int kBtcPriceMinWindowDays = 30;
 
+/// Loads daily history: tries live APIs first, then [assets/data/btc_price_fallback_2000.json].
+///
+/// If [days] exceeds [kBtcBundledFallbackMaxDays] and only the bundle is available, you get up to
+/// [kBtcBundledFallbackMaxDays] most recent days.
+Future<BtcUsdHistoryResult> loadBtcUsdHistory({int days = 365}) async {
+  if (days < 1 || days > kBtcPriceMaxFetchDays) {
+    throw ArgumentError.value(days, 'days', 'must be 1–$kBtcPriceMaxFetchDays');
+  }
+  try {
+    final points = await _fetchBtcUsdHistoryNetwork(days: days);
+    return BtcUsdHistoryResult(points: points, fromBundledFallback: false);
+  } catch (e) {
+    try {
+      final points = await _loadBundledFallback(days: days);
+      return BtcUsdHistoryResult(points: points, fromBundledFallback: true);
+    } catch (_) {
+      throw e;
+    }
+  }
+}
+
+/// Daily BTC history (live APIs only). Prefer [loadBtcUsdHistory] for offline fallback.
+Future<List<BtcPricePoint>> fetchBtcUsdHistory({int days = 365}) async {
+  final r = await loadBtcUsdHistory(days: days);
+  return r.points;
+}
+
+Future<List<BtcPricePoint>> _loadBundledFallback({required int days}) async {
+  final raw = await rootBundle.loadString(_kBtcFallbackAsset);
+  final parsed = _parseBtcFallbackJson(raw);
+  if (parsed.isEmpty) {
+    throw Exception('bundled BTC file empty');
+  }
+  final want = days > kBtcBundledFallbackMaxDays ? kBtcBundledFallbackMaxDays : days;
+  final take = want > parsed.length ? parsed.length : want;
+  return parsed.sublist(parsed.length - take);
+}
+
+List<BtcPricePoint> _parseBtcFallbackJson(String body) {
+  final decoded = jsonDecode(body) as Map<String, dynamic>;
+  final series = decoded['series'] as List<dynamic>? ?? [];
+  final out = <BtcPricePoint>[];
+  for (final row in series) {
+    if (row is! List || row.length < 2) continue;
+    final ms = (row[0] as num).toInt();
+    final p = (row[1] as num).toDouble();
+    out.add(
+      BtcPricePoint(
+        time: DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true),
+        usd: p,
+      ),
+    );
+  }
+  out.sort((a, b) => a.time.compareTo(b.time));
+  return out;
+}
+
 /// Daily BTC history up to [days] (max [kBtcPriceMaxFetchDays]).
 ///
 /// Binance paginates when [days] > 1000. Fallbacks: CoinGecko ``days=max``, CryptoCompare (≤2000).
-Future<List<BtcPricePoint>> fetchBtcUsdHistory({int days = 365}) async {
+Future<List<BtcPricePoint>> _fetchBtcUsdHistoryNetwork({required int days}) async {
   if (days < 1 || days > kBtcPriceMaxFetchDays) {
     throw ArgumentError.value(days, 'days', 'must be 1–$kBtcPriceMaxFetchDays');
   }

@@ -14,6 +14,7 @@ import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
+from pathlib import Path
 
 COINGECKO_MARKET_CHART = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
 BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines"
@@ -23,6 +24,29 @@ _UA = {"User-Agent": "BitcoinQuantumThreatToolkit/1.0 (educational)"}
 
 # ~15 years of daily candles — max slider / fetch target (Binance needs multiple requests).
 BTC_HISTORY_MAX_DAYS = int(15 * 365.25)
+
+# Bundled JSON (Flutter asset + Streamlit fallback) — refresh `scripts/export_btc_fallback_json.py`.
+_BTC_FALLBACK_JSON = Path(__file__).resolve().parent / "bitcoin_quantum_threat_app" / "assets" / "data" / "btc_price_fallback_2000.json"
+BUNDLED_BTC_MAX_DAYS = 2000
+
+
+def load_btc_price_fallback_json(*, max_days: int | None = None) -> list[tuple[datetime, float]]:
+    """~2000 daily closes from repo JSON when live APIs fail (mirrors Flutter asset)."""
+    if not _BTC_FALLBACK_JSON.is_file():
+        raise FileNotFoundError(f"missing bundled BTC file: {_BTC_FALLBACK_JSON}")
+    raw = json.loads(_BTC_FALLBACK_JSON.read_text(encoding="utf-8"))
+    series = raw.get("series") or []
+    out: list[tuple[datetime, float]] = []
+    for row in series:
+        if not isinstance(row, (list, tuple)) or len(row) < 2:
+            continue
+        ms, price = row[0], row[1]
+        dt = datetime.fromtimestamp(float(ms) / 1000.0, tz=timezone.utc)
+        out.append((dt, float(price)))
+    out.sort(key=lambda x: x[0])
+    if max_days is not None and len(out) > max_days:
+        out = out[-max_days:]
+    return out
 
 
 def _fetch_binance(days: int) -> list[tuple[datetime, float]]:

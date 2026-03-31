@@ -34,6 +34,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   fl_chart: ^0.70.2
   http: ^1.2.2
+  webfeed: ^0.7.0
   url_launcher: ^6.3.1
   share_plus: ^10.1.4
 
@@ -62,8 +63,11 @@ flutter:
   assets:
     # Bundled Polymarket Gamma JSON — web cannot call the API (CORS); CI refreshes before build.
     - assets/data/polymarket_snapshot.json
+    # ~2000 days daily BTC — offline fallback when live APIs fail (CI refreshes).
+    - assets/data/btc_price_fallback_2000.json
     - assets/images/overview_nist.jpg
     - assets/images/overview_ibm_quantum.jpg
+    - assets/images/overview_bitcoin.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

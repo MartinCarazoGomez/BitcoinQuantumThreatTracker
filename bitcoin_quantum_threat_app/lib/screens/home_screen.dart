@@ -237,7 +237,7 @@ class _BtcYearPriceCard extends StatefulWidget {
 }
 
 class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
-  late Future<List<BtcPricePoint>> _future;
+  late Future<BtcUsdHistoryResult> _future;
 
   /// Visible window in days (default 12 months).
   int _windowDays = kBtcPriceDefaultWindowDays;
@@ -245,7 +245,7 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
   @override
   void initState() {
     super.initState();
-    _future = fetchBtcUsdHistory(days: kBtcPriceMaxFetchDays);
+    _future = loadBtcUsdHistory(days: kBtcPriceMaxFetchDays);
   }
 
   static String _fmtUsd(double v) {
@@ -265,7 +265,7 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-        child: FutureBuilder<List<BtcPricePoint>>(
+        child: FutureBuilder<BtcUsdHistoryResult>(
           future: _future,
           builder: (context, snap) {
             if (snap.connectionState != ConnectionState.done) {
@@ -278,12 +278,13 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Text(
-                  'Could not load BTC price (network or API). ${snap.error}',
+                  'Could not load BTC price (network and bundled file). ${snap.error}',
                   style: TextStyle(color: AppColors.muted.withValues(alpha: 0.95), fontSize: 13, height: 1.4),
                 ),
               );
             }
-            final all = snap.data!;
+            final result = snap.data!;
+            final all = result.points;
             if (all.isEmpty) {
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
@@ -326,7 +327,9 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Last $w days · UTC · Binance / CoinGecko / CryptoCompare',
+                  result.fromBundledFallback
+                      ? 'Last $w days · UTC · Bundled snapshot (up to $kBtcBundledFallbackMaxDays days when offline)'
+                      : 'Last $w days · UTC · Binance / CoinGecko / CryptoCompare',
                   style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.88)),
                 ),
                 const SizedBox(height: 8),

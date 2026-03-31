@@ -900,9 +900,14 @@ def render_btc_year_chart():
         "Use the slider below the chart to show fewer days (≈1 month) or more (up to ~15 years of daily data fetched)."
     )
     try:
-        from btc_price import BTC_HISTORY_MAX_DAYS, fetch_btc_usd_prices
+        from btc_price import BTC_HISTORY_MAX_DAYS, fetch_btc_usd_prices, load_btc_price_fallback_json
 
-        series_full = fetch_btc_usd_prices(BTC_HISTORY_MAX_DAYS)
+        try:
+            series_full = fetch_btc_usd_prices(BTC_HISTORY_MAX_DAYS)
+            bundled_note = ""
+        except Exception:
+            series_full = load_btc_price_fallback_json(max_days=BTC_HISTORY_MAX_DAYS)
+            bundled_note = " (bundled offline snapshot; up to 2000 days)"
         if not series_full:
             st.warning("No price samples returned.")
             return
@@ -928,7 +933,7 @@ def render_btc_year_chart():
                 plot_bgcolor="#0a0f1a",
                 font=dict(color="#94a3b8"),
                 title=dict(
-                    text=f"BTC/USDT daily close — last {w} days ({max_days} days loaded)",
+                    text=f"BTC/USDT daily close — last {w} days ({max_days} days loaded){bundled_note}",
                     font=dict(color="#f1f5f9", size=14),
                 ),
                 xaxis=dict(
@@ -1133,10 +1138,56 @@ def render_quick_check():
         st.rerun()
 
 
+def _strip_html(text):
+    """Remove HTML tags and decode entities."""
+    import re
+    import html
+
+    if not text:
+        return ""
+    text = re.sub(r"<[^>]+>", " ", str(text))
+    return html.unescape(text).strip()
+
+
+def _entry_feed_html(entry):
+    """Prefer RSS content:encoded when feedparser exposes a longer body than summary."""
+    raw = entry.get("summary", "") or entry.get("description", "") or ""
+    content = getattr(entry, "content", None)
+    if content and isinstance(content, list):
+        for part in content:
+            if isinstance(part, dict):
+                v = part.get("value", "")
+                if isinstance(v, str) and len(v.strip()) > len(raw):
+                    raw = v
+    return raw
+
+
+def _fetch_feed_bytes(url: str) -> bytes:
+    """Fetch raw RSS bytes so feedparser can honor XML encoding."""
+    import urllib.request
+
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 (compatible; BQTT/1.0)"},
+    )
+    with urllib.request.urlopen(req, timeout=45) as resp:
+        return resp.read()
+
+
 _NEWS_IMG_DIR = Path(__file__).resolve().parent / "bitcoin_quantum_threat_app" / "assets" / "images"
 
 # Long-form copy paired with overview images (mirrors Flutter `news_visual_context.dart`).
 _NEWS_VISUAL_STORIES = [
+    (
+        "overview_ibm_quantum.jpg",
+        "IBM-style hardware milestones vs breaking ECDSA",
+        [
+            "IBM and other labs publish processor generations with eye-catching **physical** qubit counts—Condor, Heron, and roadmap slides that stretch into the 2030s. Those numbers describe chips and systems used for chemistry simulation, error-correction research, and benchmarking. They are not the same as “logical qubits” that would execute a full fault-tolerant Shor instance against secp256k1 at scale, and they are not a direct readout of calendar time until a key is broken.",
+            "Useful cryptanalysis against elliptic-curve discrete logarithms needs sustained, error-corrected computation. Roadmap targets (for example, public IBM materials discussing thousands of logical qubits later this decade) are **aspirational engineering goals**. They can move earlier or later as materials science, control electronics, and decoding algorithms improve. That is why the app treats “quantum break year” as a parameter you sweep rather than a single point estimate from a press release.",
+            "The milestone chart on this screen shows documented **hardware announcements** on a log scale; the race chart shows a **conceptual** overlap between quantum capability and migration. Neither chart claims that a particular IBM chip breaks Bitcoin next Tuesday. They orient you: hardware is advancing quickly in the lab, while Bitcoin migration is a social-technical process that can lag or lead depending on policy, UX, and incentives.",
+            "When you read news about qubit records, pair it with this distinction: **laboratory scale** versus **cryptanalytic reality** versus **protocol migration**. The toolkit is built to make that third leg—migration speed and vulnerable share—as explicit as the quantum curve, because headlines about chips alone will not tell you whether funds are safe in the 2040s.",
+        ],
+    ),
     (
         "overview_nist.jpg",
         "NIST and the post-quantum standards story",
@@ -1148,13 +1199,13 @@ _NEWS_VISUAL_STORIES = [
         ],
     ),
     (
-        "overview_ibm_quantum.jpg",
-        "IBM-style hardware milestones vs breaking ECDSA",
+        "overview_bitcoin.png",
+        "Bitcoin: where quantum risk actually sits",
         [
-            "IBM and other labs publish processor generations with eye-catching **physical** qubit counts—Condor, Heron, and roadmap slides that stretch into the 2030s. Those numbers describe chips and systems used for chemistry simulation, error-correction research, and benchmarking. They are not the same as “logical qubits” that would execute a full fault-tolerant Shor instance against secp256k1 at scale, and they are not a direct readout of calendar time until a key is broken.",
-            "Useful cryptanalysis against elliptic-curve discrete logarithms needs sustained, error-corrected computation. Roadmap targets (for example, public IBM materials discussing thousands of logical qubits later this decade) are **aspirational engineering goals**. They can move earlier or later as materials science, control electronics, and decoding algorithms improve. That is why the app treats “quantum break year” as a parameter you sweep rather than a single point estimate from a press release.",
-            "The milestone chart on this screen shows documented **hardware announcements** on a log scale; the race chart shows a **conceptual** overlap between quantum capability and migration. Neither chart claims that a particular IBM chip breaks Bitcoin next Tuesday. They orient you: hardware is advancing quickly in the lab, while Bitcoin migration is a social-technical process that can lag or lead depending on policy, UX, and incentives.",
-            "When you read news about qubit records, pair it with this distinction: **laboratory scale** versus **cryptanalytic reality** versus **protocol migration**. The toolkit is built to make that third leg—migration speed and vulnerable share—as explicit as the quantum curve, because headlines about chips alone will not tell you whether funds are safe in the 2040s.",
+            "Bitcoin’s mining puzzle is built on SHA-256 preimage search. Quantum algorithms like Grover provide at most a quadratic speedup for unstructured search, which shifts security margins but does not flip the network overnight in the way Shor’s algorithm threatens public-key schemes. The headline quantum issue for holders is therefore not “SHA-256 is broken,” it is **signatures**: today’s spends reveal ECDSA or Schnorr public keys tied to those coins, and a future machine that runs Shor efficiently could derive private keys from those public keys for the affected outputs.",
+            "Taproot (activated November 2021) improves privacy and efficiency—Schnorr signatures, MAST-style script hiding, and better batch verification—but it does not remove the need for a post-quantum signature migration path. It changes **how** keys and scripts appear on chain, not the fundamental fact that classical elliptic-curve assumptions underpin authorization until consensus adopts new primitives.",
+            "Risk accumulates where users reuse addresses, leave coins in old script types, or defer moving value while signatures pile up on-chain. Cold storage that has **never** published a public key in a spend is in a different exposure class than hot wallets that sign frequently. That nuance is why aggregate “quantum threat” numbers are scenario-dependent: the simulator’s **vulnerable share** slider exists to express how much value might sit under keys that are already exposed or easy to target.",
+            "Engineering proposals for Bitcoin-level migration—new output types, hybrid classical/post-quantum schemes, and social processes for upgrade—are active research and debate, not a single shipped knob. The photos and headlines you see in the feeds sit in that context: they are **news** about regulation, markets, and technology, while this app’s charts express **structured uncertainty** about timing. Read them together: headlines for what happened this week, curves for what might happen across decades.",
         ],
     ),
 ]
@@ -1171,8 +1222,51 @@ def render_news():
     st.caption("Live prediction-market card is in the Flutter app; this page uses charts further down.")
     st.divider()
 
-    st.subheader("Visual context — stories behind the images")
-    st.caption("Longer background tied to the overview images.")
+    st.subheader("Recent headlines")
+    st.caption("Live RSS excerpts; click through to the source site.")
+    try:
+        import feedparser
+        import html as html_std
+
+        feeds = [
+            ("https://cointelegraph.com/rss", "Crypto & Blockchain"),
+            ("https://bitcoinmagazine.com/.feed", "Bitcoin"),
+        ]
+        for url, name in feeds:
+            st.markdown(f"**{name}**")
+            try:
+                raw = _fetch_feed_bytes(url)
+                d = feedparser.parse(raw)
+                for e in d.entries[:4]:
+                    title = _strip_html(e.get("title", ""))
+                    pub = e.get("published", "")[:10] if e.get("published") else ""
+                    summary = _strip_html(_entry_feed_html(e))
+                    if len(summary) > 2800:
+                        summary = summary[:2797] + "..."
+                    link = (e.get("link", "") or "").strip()
+                    if link:
+                        t_esc = html_std.escape(title)
+                        href_esc = html_std.escape(link, quote=True)
+                        pub_esc = html_std.escape(pub) if pub else ""
+                        pub_suffix = f" ({pub_esc})" if pub_esc else ""
+                        st.markdown(
+                            f'<p><a href="{href_esc}" target="_blank" rel="noopener noreferrer">'
+                            f"<strong>{t_esc}</strong></a>{pub_suffix}</p>",
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.markdown(f"**{title}** {f'({pub})' if pub else ''}")
+                    if summary:
+                        st.markdown(f"> {summary}")
+                    st.markdown("")
+            except Exception as ex:
+                st.caption(f"Unable to load feed: {ex}")
+            st.markdown("")
+    except ImportError:
+        st.info("Install feedparser: `pip install feedparser` for live headlines.")
+
+    st.divider()
+
     for fname, vtitle, paras in _NEWS_VISUAL_STORIES:
         img_path = _NEWS_IMG_DIR / fname
         if img_path.exists():
