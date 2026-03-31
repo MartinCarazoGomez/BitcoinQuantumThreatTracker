@@ -18,43 +18,30 @@ class HomeScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
       children: [
         const SizedBox(height: 4),
-        Text(
-          'Bitcoin Quantum\nThreat Toolkit',
-          style: t.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                height: 1.15,
-                color: AppColors.text,
-                letterSpacing: -0.5,
-              ) ??
-              const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                height: 1.15,
-                color: AppColors.text,
-              ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Stress-test quantum vs migration timing with charts and export.',
-          style: t.bodyLarge?.copyWith(
-                color: AppColors.muted,
-                height: 1.45,
-                fontWeight: FontWeight.w400,
-              ) ??
-              TextStyle(
-                fontSize: 15,
-                color: AppColors.muted.withValues(alpha: 0.95),
-                height: 1.45,
-              ),
-        ),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final m in AppStrings.homeMeta)
-              _MetaChip(label: m.$1, detail: m.$2),
-          ],
+        SizedBox(
+          width: double.infinity,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: Text(
+              'Bitcoin Quantum Threat Toolkit',
+              maxLines: 1,
+              softWrap: false,
+              textAlign: TextAlign.center,
+              style: t.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                    color: AppColors.text,
+                    letterSpacing: -0.5,
+                  ) ??
+                  const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                    color: AppColors.text,
+                  ),
+            ),
+          ),
         ),
         const SizedBox(height: 28),
         Text(
@@ -208,67 +195,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 20),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: AppColors.surface2.withValues(alpha: 0.35),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Icon(Icons.swipe_vertical_outlined, size: 18, color: AppColors.muted.withValues(alpha: 0.85)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Other sections: bottom navigation.',
-                    style: TextStyle(
-                      color: AppColors.muted.withValues(alpha: 0.9),
-                      fontSize: 13,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ],
-    );
-  }
-}
-
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.label, required this.detail});
-
-  final String label;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: AppColors.surface2.withValues(alpha: 0.55),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
-      ),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(fontSize: 13, height: 1.25),
-          children: [
-            TextSpan(
-              text: label,
-              style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.text),
-            ),
-            TextSpan(
-              text: ' · $detail',
-              style: TextStyle(color: AppColors.muted.withValues(alpha: 0.95), fontWeight: FontWeight.w400),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

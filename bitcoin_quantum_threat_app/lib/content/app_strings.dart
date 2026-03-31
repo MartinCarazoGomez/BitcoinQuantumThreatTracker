@@ -1,14 +1,9 @@
 // Copy aligned with Streamlit `app.py` where applicable.
 
 class AppStrings {
-  static const homeMeta = [
-    ('Interactive', 'charts & sensitivity'),
-    ('Explainable', 'deadlines & verdicts'),
-    ('Presentation-ready', 'exports'),
-  ];
-
   static const whyMatters =
-      'ECDSA is vulnerable to large enough quantum machines; migration is a timing and coordination problem. This app models scenarios—not forecasts.';
+      'Bitcoin uses ECDSA (and Schnorr) signatures tied to your private keys—quantum computers could eventually break that public-key math. '
+      'Migration is a timing and coordination problem. This app models scenarios—not forecasts.';
 
   static const workflowSteps = <String>[
     'Context — Quick Check, News, or Timeline.',

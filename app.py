@@ -237,16 +237,6 @@ CUSTOM_CSS = """
         line-height: 1.65;
         font-weight: 400;
     }
-    .landing-meta {
-        display: flex;
-        justify-content: center;
-        gap: 1.5rem;
-        flex-wrap: wrap;
-        font-size: 0.8rem;
-        color: #64748b;
-    }
-    .landing-meta span { color: #64748b; }
-    .landing-meta strong { color: #cbd5e1; font-weight: 600; }
     .landing-stats {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -542,12 +532,6 @@ CUSTOM_CSS = """
             font-size: 0.95rem !important;
             margin-bottom: 1rem !important;
         }
-        .landing-meta {
-            flex-direction: column;
-            gap: 0.35rem !important;
-            font-size: 0.75rem !important;
-        }
-        .landing-meta span:nth-child(even) { display: none; }
         .landing-footer, .landing-workflow {
             padding: 1.1rem 1rem !important;
         }
@@ -911,17 +895,6 @@ def render_home():
         <div class="landing-hero">
             <div class="landing-badge">Decision intelligence · Scenario modeling</div>
             <h1 class="landing-title">Bitcoin Quantum Threat Toolkit</h1>
-            <p class="landing-subtitle">
-                See how quantum progress and post-quantum migration can drift out of sync—then stress-test
-                assumptions with charts, comparisons, and exports. Models illustrate scenarios, not predictions.
-            </p>
-            <div class="landing-meta">
-                <span><strong>Interactive</strong> charts &amp; sensitivity</span>
-                <span>·</span>
-                <span><strong>Explainable</strong> deadlines &amp; verdicts</span>
-                <span>·</span>
-                <span><strong>Presentation-ready</strong> exports</span>
-            </div>
         </div>
         </div>
         """,
@@ -999,9 +972,8 @@ def render_home():
         <div class="landing-footer">
             <h4>Why this matters</h4>
             <p>
-                Quantum computers could eventually threaten elliptic-curve signatures used widely today—including in Bitcoin.
-                Post-quantum migration is a coordination and timing problem: this toolkit helps teams visualize mismatch risk,
-                communicate trade-offs, and document assumptions for stakeholders—without claiming deterministic prediction.
+                Bitcoin uses <strong style="color:#e2e8f0;">ECDSA</strong> (and Schnorr) signatures tied to private keys—quantum computers could eventually break that public-key math.
+                Post-quantum migration is a coordination and timing problem. This toolkit models scenarios, not deterministic predictions.
             </p>
         </div>
         </div>
