@@ -28,9 +28,7 @@ class TimelineScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Earlier rows are documented hardware and standards dates. '
-            'Forward-looking policy and roadmap milestones (2030–2035) follow FNCE313 presentation materials. '
-            'The “simulator horizon” row is in-app only—not a forecast.',
+            'Documented milestones plus illustrative 2030–2035 policy rows. “Simulator horizon” marks the model window.',
             style: TextStyle(color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
           ),
           const SizedBox(height: 16),
@@ -42,7 +40,7 @@ class TimelineScreen extends StatelessWidget {
           TimelineChart(events: kTimelineEvents),
           const SizedBox(height: 8),
           const Text(
-            'Type: quantum = hardware; crypto = NIST; bitcoin = consensus; model = in-app only.',
+            'Types: quantum, crypto, bitcoin, model.',
             style: TextStyle(fontSize: 11, color: AppColors.muted, height: 1.35),
           ),
           const SizedBox(height: 16),

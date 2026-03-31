@@ -109,12 +109,12 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         children: [
           const Text(
-            'Race Between Quantum Capability and Bitcoin Migration',
+            'Quantum vs migration',
             style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.text),
           ),
           const SizedBox(height: 8),
           Text(
-            'Tap the chart to select a year. Q/M/R (0–1 scale) appear on the chart to 3 significant figures.',
+            'Tap chart for year. Q/M/R = values at the scrub line (0–1).',
             style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9), fontSize: 12, height: 1.35),
           ),
           const SizedBox(height: 8),
@@ -144,22 +144,20 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _heroCard(),
-          const SizedBox(height: 12),
           _topExpansionTile(
             title: 'Compare',
-            subtitle: 'Preset scenarios vs your current strategy',
+            subtitle: 'Preset scenarios vs your strategy',
             child: _comparePanel(),
           ),
           _topExpansionTile(
             title: 'Sensitivity',
-            subtitle: 'Peak risk vs one parameter',
+            subtitle: 'Peak risk vs parameter',
             child: _sensitivityPanel(),
             maintainState: true,
           ),
           _topExpansionTile(
             title: 'Summary',
-            subtitle: 'Recommendation and CSV export',
+            subtitle: 'Verdict & CSV',
             child: _summaryPanel(verdict, rec, curves),
           ),
         ],
@@ -625,8 +623,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('Preset scenarios vs your current strategy.', style: TextStyle(color: AppColors.muted)),
-        const SizedBox(height: 10),
+        const SizedBox(height: 4),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
@@ -654,11 +651,6 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
                 ),
             ],
           ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Preset defaults for each scenario with your current migration strategy.',
-          style: TextStyle(fontSize: 12, color: AppColors.muted),
         ),
       ],
     );
@@ -725,7 +717,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Steep slopes = highly sensitive; flat regions = more robust to changes.',
+          'Steeper = more sensitive to that parameter.',
           style: TextStyle(fontSize: 12, color: AppColors.muted),
         ),
       ],
@@ -740,7 +732,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         Text('Recommendation: $rec', style: const TextStyle(height: 1.45, fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
         const Text(
-          'Assumptions — Scenario model, not prediction. Conclusions depend on break-year timing, migration speed, and vulnerable share.',
+          'Illustrative model—not a prediction.',
           style: TextStyle(color: AppColors.muted, height: 1.4),
         ),
         const SizedBox(height: 16),

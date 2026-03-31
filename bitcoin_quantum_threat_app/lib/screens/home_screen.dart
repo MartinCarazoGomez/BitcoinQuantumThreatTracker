@@ -35,7 +35,7 @@ class HomeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Model how quantum progress and migration can fall out of step—then stress-test assumptions with charts and exports.',
+          'Stress-test quantum vs migration timing with charts and export.',
           style: t.bodyLarge?.copyWith(
                 color: AppColors.muted,
                 height: 1.45,
@@ -70,7 +70,7 @@ class HomeScreen extends StatelessWidget {
           icon: Icons.bolt_rounded,
           iconColor: AppColors.amber,
           title: 'Quick Risk Check',
-          subtitle: 'Four questions → an instant risk band. Great for a first pass or a snapshot.',
+          subtitle: 'Four questions → a risk band.',
           emphasized: true,
           onTap: onOpenQuick,
         ),
@@ -79,7 +79,7 @@ class HomeScreen extends StatelessWidget {
           icon: Icons.area_chart_rounded,
           iconColor: AppColors.quantum,
           title: 'Risk Simulator',
-          subtitle: 'Presets, sliders, compare runs, sensitivity, and CSV export.',
+          subtitle: 'Sliders, compare, sensitivity, CSV.',
           emphasized: false,
           onTap: onOpenSimulator,
         ),
@@ -222,7 +222,7 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Use the bottom navigation for Simulator, Quick Check, News, Timeline, and Glossary.',
+                    'Other sections: bottom navigation.',
                     style: TextStyle(
                       color: AppColors.muted.withValues(alpha: 0.9),
                       fontSize: 13,

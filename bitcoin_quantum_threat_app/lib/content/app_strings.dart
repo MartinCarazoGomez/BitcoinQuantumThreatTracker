@@ -8,22 +8,20 @@ class AppStrings {
   ];
 
   static const whyMatters =
-      'Quantum computers could eventually threaten elliptic-curve signatures used widely today—including in Bitcoin. '
-      'Post-quantum migration is a coordination and timing problem: this toolkit helps teams visualize mismatch risk, '
-      'communicate trade-offs, and document assumptions for stakeholders—without claiming deterministic prediction.';
+      'ECDSA is vulnerable to large enough quantum machines; migration is a timing and coordination problem. This app models scenarios—not forecasts.';
 
   static const workflowSteps = <String>[
-    'Orient — Quick Check or News / Timeline for context.',
-    'Model — Risk Simulator on Moderate preset, then tune sliders.',
-    'Validate — Compare scenarios and Sensitivity tab; note any critical year.',
-    'Share — Export CSV for slides or documentation.',
+    'Context — Quick Check, News, or Timeline.',
+    'Model — Simulator (Moderate preset, then sliders).',
+    'Check — Compare & sensitivity; note critical years.',
+    'Export — CSV from Summary.',
   ];
 
   static const chartGuideBullets = <String>[
-    'Quantum capability — How close quantum computers are to breaking Bitcoin ECDSA signatures (0 = no threat, 1 = full capability).',
-    'Migration progress — Share of the ecosystem that has moved to post-quantum cryptography.',
-    'Risk curve — Mismatch risk: high when quantum is ahead of migration.',
-    'Crisis threshold — Your risk limit; crossing it triggers a critical deadline.',
+    'Quantum — Capability to break ECDSA (0–1).',
+    'Migration — Ecosystem PQ adoption (0–1).',
+    'Risk — Mismatch when quantum runs ahead of migration.',
+    'Crisis line — Threshold for “critical” year.',
   ];
 
   static const strategyNotes = <String, String>{
