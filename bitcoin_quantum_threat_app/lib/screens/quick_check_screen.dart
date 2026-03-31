@@ -86,7 +86,7 @@ class _QuickCheckScreenState extends State<QuickCheckScreen> {
         padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPad),
         children: [
           Text(
-            'Answer four questions for an instant risk snapshot. No sliders required.',
+            'Four questions → a risk band.',
             style: TextStyle(color: AppColors.muted.withValues(alpha: 0.95)),
           ),
           const SizedBox(height: 16),
@@ -133,20 +133,20 @@ class _QuickCheckScreenState extends State<QuickCheckScreen> {
       bandColor = const Color(0xFF4ade80);
       bg = const Color(0xFF14532d).withValues(alpha: 0.45);
       border = const Color(0xFF22c55e).withValues(alpha: 0.45);
-      headline = 'Low risk — Your assumptions suggest the race is manageable. Migration likely ahead of threat.';
-      followUp = 'Consider using the full Simulator to stress-test different scenarios.';
+      headline = 'Low risk — migration likely ahead of quantum on your assumptions.';
+      followUp = 'Try the Simulator for more scenarios.';
     } else if (score <= 5) {
       bandColor = AppColors.amber;
       bg = const Color(0xFF713f12).withValues(alpha: 0.4);
       border = AppColors.amber.withValues(alpha: 0.45);
-      headline = 'Moderate risk — Some tension between quantum timelines and migration. Coordination is key.';
-      followUp = 'Use the Simulator to see how pulling migration forward changes outcomes.';
+      headline = 'Moderate risk — quantum and migration are in tension.';
+      followUp = 'Simulator: tune migration timing.';
     } else {
       bandColor = AppColors.risk;
       bg = const Color(0xFF7f1d1d).withValues(alpha: 0.45);
       border = AppColors.risk.withValues(alpha: 0.45);
-      headline = 'High risk — Quantum could outpace migration under your assumptions. Urgency is warranted.';
-      followUp = 'Run the full Simulator with pessimistic presets to explore mitigation options.';
+      headline = 'High risk — quantum could lead migration on your assumptions.';
+      followUp = 'Simulator: pessimistic preset + sliders.';
     }
 
     return Column(

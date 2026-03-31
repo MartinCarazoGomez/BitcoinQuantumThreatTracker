@@ -288,7 +288,7 @@ class _NewsScreenState extends State<NewsScreen> {
                           'Prediction market',
                           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                         ),
-                        Text('Polymarket · tap the card to open the market in your browser', style: subtle),
+                        Text('Polymarket · tap to open', style: subtle),
                       ],
                     ),
                   ),
@@ -297,10 +297,8 @@ class _NewsScreenState extends State<NewsScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                'Polymarket lets people trade “Yes” and “No” shares; prices are treated as crowd-implied probabilities, not official forecasts. '
-                'This market resolves from Polymarket’s published rules (whether Bitcoin stops using SHA-256 by their deadline). '
-                'That question is about mining hashing on the chain—not the same topic as quantum computers breaking ECDSA wallet signatures; see the Glossary. '
-                'On the web app, numbers come from a bundled snapshot (Polymarket’s API blocks browsers); the iOS/Android build can call the API directly.',
+                'Prices are market-implied, not forecasts. This SHA-256 mining question ≠ ECDSA quantum risk. '
+                'Web may use a bundled snapshot.',
                 style: subtle,
               ),
               const SizedBox(height: 12),
@@ -398,8 +396,7 @@ class _NewsScreenState extends State<NewsScreen> {
         const Text('Overview', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
         const SizedBox(height: 8),
         Text(
-          'Three short topics with photos: how quantum hardware is scaling, what NIST has standardized for post-quantum crypto, '
-          'and how Bitcoin’s community discusses migration. These are background—not trading or security advice.',
+          'Photos + short context: hardware, NIST PQ, Bitcoin migration talk. Not advice.',
           style: TextStyle(color: AppColors.muted.withValues(alpha: 0.92), height: 1.45, fontSize: 12),
         ),
         const SizedBox(height: 14),
@@ -411,10 +408,7 @@ class _NewsScreenState extends State<NewsScreen> {
               style: body,
               children: const [
                 TextSpan(text: 'Quantum computing', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.text)),
-                TextSpan(text: ' — Progress is accelerating. Google\'s 2019 Sycamore demonstration showed '
-                    'quantum supremacy (53 qubits). IBM, IonQ, and others are scaling qubit counts into the hundreds. '
-                    'Current estimates suggest large-scale fault-tolerant machines capable of breaking ECDSA and RSA '
-                    'could arrive in the 2030s–2040s, though timelines are uncertain.'),
+                TextSpan(text: ' — Hardware scaling; fault-tolerant breaks are a separate timeline (often discussed as 2030s–2040s).'),
               ],
             ),
           ),
@@ -431,16 +425,14 @@ class _NewsScreenState extends State<NewsScreen> {
                 const TextSpan(text: ' — In '),
                 const TextSpan(text: 'July 2022', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.amber)),
                 const TextSpan(
-                  text: ', NIST selected algorithms for standardization '
-                      '(including CRYSTALS-Kyber and CRYSTALS-Dilithium, later ML-KEM / ML-DSA, and SPHINCS+-related SLH-DSA). '
-                      'In ',
+                  text: ', NIST selected PQC algorithms (Kyber/Dilithium/SPHINCS+). In ',
                 ),
                 const TextSpan(text: 'August 2024', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.amber)),
                 const TextSpan(
-                  text: ', NIST published ',
+                  text: ', ',
                 ),
-                const TextSpan(text: 'FIPS 203, 204, and 205', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.text)),
-                const TextSpan(text: ' (ML-KEM, ML-DSA, SLH-DSA). Adoption in TLS and other systems is ongoing.'),
+                const TextSpan(text: 'FIPS 203–205', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.text)),
+                const TextSpan(text: ' (ML-KEM, ML-DSA, SLH-DSA).'),
               ],
             ),
           ),
@@ -455,10 +447,7 @@ class _NewsScreenState extends State<NewsScreen> {
               children: const [
                 TextSpan(text: 'Bitcoin', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.text)),
                 TextSpan(
-                  text: ' — There is no network-wide post-quantum migration yet. Developers and researchers discuss '
-                      'post-quantum signatures and soft-fork trade-offs in public forums (e.g. Bitcoin dev mailing list, '
-                      'Bitcoin Optech newsletter). Hybrid schemes (ECDSA plus a post-quantum component) are often discussed; '
-                      'coordination would be required across the ecosystem.',
+                  text: ' — No network-wide PQ migration yet; dev/research discussion continues (Optech, mailing lists).',
                 ),
               ],
             ),
@@ -485,7 +474,7 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Points show public hardware announcements (physical qubits, log scale). They illustrate industry momentum—not when a machine could break Bitcoin’s signatures, which depends on fault-tolerant logical qubits and algorithms like Shor’s.',
+          'Public qubit announcements (log scale). Not a break timeline.',
           style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
         ),
         const SizedBox(height: 8),
@@ -611,7 +600,7 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Curves come from this app’s built-in scenario math (same family as the Simulator tab). They are illustrative “what-if” lines, not predictions of real-world dates. Adjust assumptions there to explore different stories.',
+          'Same model family as the Simulator—illustrative only.',
           style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
         ),
         const SizedBox(height: 8),
@@ -693,7 +682,7 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         const SizedBox(height: 6),
         const Text(
-          'Early migration stays ahead of quantum; late migration risks a dangerous overlap.',
+          'Early vs late migration paths.',
           style: TextStyle(fontSize: 11, color: AppColors.muted, height: 1.35),
         ),
         const SizedBox(height: 6),
@@ -806,10 +795,7 @@ class _NewsScreenState extends State<NewsScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'This tab mixes several kinds of information: (1) one Polymarket question with live or snapshot odds, '
-                            '(2) a visual overview of quantum computing, NIST post-quantum standards, and Bitcoin’s migration discussion, '
-                            '(3) two charts driven by this app’s educational models, and (4) recent headlines from RSS feeds. '
-                            'Nothing here is financial, legal, or security advice—use it to orient and to jump to primary sources.',
+                            'Polymarket snapshot, overview + charts, RSS headlines. Not advice—check sources.',
                             style: TextStyle(color: AppColors.muted.withValues(alpha: 0.98), height: 1.45, fontSize: 13),
                           ),
                         ],
@@ -827,10 +813,7 @@ class _NewsScreenState extends State<NewsScreen> {
                     const Text('Recent headlines & summaries', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
                     const SizedBox(height: 8),
                     Text(
-                      'Articles are fetched from each site’s public RSS feed (Cointelegraph, Bitcoin Magazine). '
-                      'The text under a title is a shortened excerpt from the feed, not written by this app. '
-                      'Pull down to refresh both feeds and the Polymarket block. On some browsers, RSS can fail due to CORS; '
-                      'the native app usually has fewer restrictions. Tap a row to open the full article in your browser when a link exists.',
+                      'RSS excerpts from feeds; pull to refresh. Tap opens the article.',
                       style: TextStyle(color: AppColors.muted.withValues(alpha: 0.88), fontSize: 12, height: 1.45),
                     ),
                     const SizedBox(height: 14),

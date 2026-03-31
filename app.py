@@ -1253,9 +1253,8 @@ def render_timeline():
     render_back_button()
     st.title("Timeline")
     st.markdown(
-        "Earlier rows are documented hardware and standards dates. "
-        "Forward-looking policy and roadmap milestones (2030–2035) follow **FNCE313** presentation materials. "
-        "The simulator horizon row is **in-app only**—not a forecast."
+        "Documented milestones plus illustrative 2030–2035 policy rows. "
+        "**Simulator horizon** marks the model window."
     )
 
     # Verified milestones (sources: Nature 2019; IBM/NIST press; Bitcoin consensus); policy rows from FNCE313 deck
@@ -1267,10 +1266,10 @@ def render_timeline():
         (2022, "IBM Osprey processor", "quantum", "433-qubit processor announced (Nov 2022)"),
         (2023, "IBM Condor / System Two", "quantum", "1121-qubit processor announced (Dec 2023)"),
         (2024, "NIST FIPS post-quantum standards", "crypto", "FIPS 203 (ML-KEM), 204 (ML-DSA), 205 (SLH-DSA); Aug 2024"),
-        (2026, "This simulator’s horizon start", "model", "App default window begins—not a forecast"),
-        (2030, "NIST / NSA deprecation window (RSA & ECDSA)", "crypto", "Strategic policy milestone (FNCE313): transition away from RSA/ECDSA toward PQC."),
-        (2033, "IBM roadmap: 2,000+ logical qubits", "quantum", "Public hardware roadmap commitment—fault-tolerant scale relevant to cryptanalysis timelines."),
-        (2035, "Legacy crypto disallowed (global cutoff)", "crypto", "Strategic milestone (FNCE313): broader deprecation of legacy public-key schemes—timing varies by jurisdiction."),
+        (2026, "Simulator horizon start", "model", "Model window start—not a forecast."),
+        (2030, "NIST / NSA RSA & ECDSA transition window", "crypto", "Policy milestone: move off RSA/ECDSA toward PQC."),
+        (2033, "IBM roadmap: 2,000+ logical qubits", "quantum", "IBM public roadmap target."),
+        (2035, "Legacy public-key cutoff (indicative)", "crypto", "Broader deprecation timelines vary by jurisdiction."),
     ]
     df = pd.DataFrame(events, columns=["Year", "Event", "Type", "Detail"])
     colors = {"quantum": "#38bdf8", "crypto": "#a78bfa", "bitcoin": "#4ade80", "model": "#f59e0b"}

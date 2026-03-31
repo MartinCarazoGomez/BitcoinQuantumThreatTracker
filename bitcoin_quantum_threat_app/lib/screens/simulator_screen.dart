@@ -227,7 +227,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             const ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text('Parameters', style: TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text('Scenario presets and sliders'),
+              subtitle: Text('Presets & sliders'),
             ),
             Wrap(
               spacing: 8,
@@ -267,29 +267,6 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
             _slider('Crisis threshold', 'crisis_threshold', 0.10, 0.80),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _heroCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.surface2.withValues(alpha: 0.75),
-            AppColors.bg.withValues(alpha: 0.95),
-          ],
-        ),
-        border: Border.all(color: AppColors.amber.withValues(alpha: 0.22)),
-      ),
-      child: Text(
-        'Explore the timing race between quantum capability and Bitcoin migration. '
-        'Use Compare, Sensitivity, and Summary below for preset comparison, one-parameter sweeps, and export—they expand on tap.',
-        style: TextStyle(color: AppColors.muted.withValues(alpha: 0.98), height: 1.55, fontSize: 14),
       ),
     );
   }
@@ -623,7 +600,6 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: 4),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
