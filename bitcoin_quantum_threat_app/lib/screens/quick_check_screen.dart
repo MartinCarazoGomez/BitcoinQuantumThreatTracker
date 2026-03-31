@@ -11,6 +11,9 @@ class QuickCheckScreen extends StatefulWidget {
 }
 
 class _QuickCheckScreenState extends State<QuickCheckScreen> {
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _resultKey = GlobalKey();
+
   int _q1 = 0;
   int _q2 = 0;
   int _q3 = 0;
@@ -43,12 +46,44 @@ class _QuickCheckScreenState extends State<QuickCheckScreen> {
     return s;
   }
 
+  void _submitAssessment() {
+    FocusScope.of(context).unfocus();
+    setState(() => _submitted = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final ctx = _resultKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeOutCubic,
+          alignment: 0.05,
+        );
+      } else if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.paddingOf(context).bottom + 24;
     return Scaffold(
       appBar: AppBar(title: const Text('Quick Risk Check')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        controller: _scrollController,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPad),
         children: [
           Text(
             'Answer four questions for an instant risk snapshot. No sliders required.',
@@ -60,13 +95,24 @@ class _QuickCheckScreenState extends State<QuickCheckScreen> {
           _radioBlock('What share of Bitcoin value do you consider at risk?', _o3, _q3, (v) => setState(() => _q3 = v)),
           _radioBlock('How confident is ecosystem coordination on migration?', _o4, _q4, (v) => setState(() => _q4 = v)),
           const SizedBox(height: 16),
-          FilledButton(
-            onPressed: () => setState(() => _submitted = true),
-            child: const Text('Get assessment'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _submitAssessment,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                backgroundColor: AppColors.amber,
+                foregroundColor: const Color(0xFF0f172a),
+              ),
+              child: const Text('Get assessment'),
+            ),
           ),
           if (_submitted) ...[
             const SizedBox(height: 20),
-            _resultCard(),
+            KeyedSubtree(
+              key: _resultKey,
+              child: _resultCard(),
+            ),
           ],
         ],
       ),

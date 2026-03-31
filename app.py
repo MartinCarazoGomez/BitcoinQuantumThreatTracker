@@ -875,7 +875,7 @@ def apply_scenario_to_state(scenario):
 
 
 def render_bottom_tabbar():
-    """Fixed bottom navigation — matches Flutter: Home + Simulator, Quick, News, Glossary, Timeline."""
+    """Fixed bottom navigation — matches Flutter: Home + Simulator, Quick, News, Timeline, Glossary."""
     page = st.session_state.get("page", "home")
     st.markdown('<div class="app-tabbar-trigger"></div>', unsafe_allow_html=True)
     c0, c1, c2, c3, c4, c5 = st.columns(6)
@@ -885,8 +885,8 @@ def render_bottom_tabbar():
         ("simulator", "tabbar_sim", "📊\nSimulator"),
         ("quick_check", "tabbar_quick", "⚡\nQuick"),
         ("news", "tabbar_news", "📰\nNews"),
-        ("glossary", "tabbar_gloss", "📖\nGlossary"),
         ("timeline", "tabbar_timeline", "📅\nTimeline"),
+        ("glossary", "tabbar_gloss", "📖\nGlossary"),
     ]
     cols = [c0, c1, c2, c3, c4, c5]
     for i, (target, key, label) in enumerate(tabs):
@@ -969,7 +969,7 @@ def render_home():
         </div>
         <div class="landing-section-title">Navigation</div>
         <p style="text-align:center;color:#94a3b8;font-size:0.92rem;max-width:520px;margin:0 auto 0.5rem;line-height:1.55;">
-            Use the <strong style="color:#cbd5e1;">bottom bar</strong> to switch between Home, Simulator, Quick Check, News, Glossary, and Timeline—like the Flutter app.
+            Use the <strong style="color:#cbd5e1;">bottom bar</strong> to switch between Home, Simulator, Quick Check, News, Timeline, and Glossary—like the Flutter app.
         </p>
         </div>
         """,

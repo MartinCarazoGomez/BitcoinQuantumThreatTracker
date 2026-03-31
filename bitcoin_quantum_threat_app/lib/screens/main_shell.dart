@@ -32,8 +32,8 @@ class _MainShellState extends State<MainShell> {
           const SimulatorScreen(),
           const QuickCheckScreen(),
           const NewsScreen(),
-          const GlossaryScreen(),
           const TimelineScreen(),
+          const GlossaryScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -61,14 +61,14 @@ class _MainShellState extends State<MainShell> {
             label: 'News',
           ),
           NavigationDestination(
-            icon: Icon(Icons.menu_book_outlined),
-            selectedIcon: Icon(Icons.menu_book),
-            label: 'Glossary',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.timeline_outlined),
             selectedIcon: Icon(Icons.timeline),
             label: 'Timeline',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book),
+            label: 'Glossary',
           ),
         ],
       ),
