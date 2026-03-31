@@ -8,12 +8,9 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webfeed/webfeed.dart';
 
+import '../content/news_visual_context.dart';
 import '../engine/news_curves.dart';
 import '../theme/app_theme.dart';
-
-const _kOverviewIbmQuantum = 'assets/images/overview_ibm_quantum.jpg';
-const _kOverviewNist = 'assets/images/overview_nist.jpg';
-const _kOverviewBitcoin = 'assets/images/overview_bitcoin.png';
 
 /// [Polymarket](https://polymarket.com/event/will-bitcoin-replace-sha-256-before-2027) event; odds from Gamma API.
 const _kPolymarketEventUrl = 'https://polymarket.com/event/will-bitcoin-replace-sha-256-before-2027';
@@ -208,11 +205,15 @@ class _NewsScreenState extends State<NewsScreen> {
         final items = <_NewsItem>[];
         for (final item in rss.items ?? []) {
           if (items.length >= 4) break;
-          final desc = item.description ?? '';
+          var raw = item.description ?? '';
+          final encoded = item.content?.value;
+          if (encoded != null && encoded.trim().length > raw.length) {
+            raw = encoded;
+          }
           final link = item.link?.trim() ?? '';
           items.add(_NewsItem(
             title: item.title ?? '',
-            summary: _stripHtml(desc),
+            summary: _stripHtml(raw),
             pub: item.pubDate?.toIso8601String().substring(0, 10) ?? '',
             link: link.isNotEmpty ? link : null,
           ));
@@ -226,10 +227,10 @@ class _NewsScreenState extends State<NewsScreen> {
     return _NewsBundle(feeds, errors);
   }
 
-  static String _stripHtml(String s) {
+  static String _stripHtml(String s, {int maxLen = 2800}) {
     var t = s.replaceAll(RegExp(r'<[^>]*>'), ' ');
     t = t.replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (t.length > 400) t = '${t.substring(0, 397)}...';
+    if (t.length > maxLen) t = '${t.substring(0, maxLen - 3)}...';
     return t;
   }
 
@@ -281,16 +282,7 @@ class _NewsScreenState extends State<NewsScreen> {
                   Icon(Icons.poll_outlined, size: 22, color: AppColors.quantum.withValues(alpha: 0.95)),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Prediction market',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                        ),
-                        Text('Polymarket · tap to open', style: subtle),
-                      ],
-                    ),
+                    child: Text('Tap to open on Polymarket', style: subtle.copyWith(fontWeight: FontWeight.w600)),
                   ),
                   const Icon(Icons.open_in_new, size: 18, color: AppColors.muted),
                 ],
@@ -359,101 +351,6 @@ class _NewsScreenState extends State<NewsScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _overviewImage(String assetPath, String caption) {
-    return _NewsOverviewImage(assetPath: assetPath, caption: caption);
-  }
-
-  Widget _overviewRow({required Widget image, required Widget text, required bool narrow}) {
-    if (narrow) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          image,
-          const SizedBox(height: 10),
-          text,
-        ],
-      );
-    }
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(flex: 2, child: image),
-        const SizedBox(width: 12),
-        Expanded(flex: 3, child: text),
-      ],
-    );
-  }
-
-  Widget _overviewBlock(double maxWidth) {
-    final narrow = maxWidth < 520;
-    final body = TextStyle(color: AppColors.muted.withValues(alpha: 0.95), height: 1.5, fontSize: 13);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Overview', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
-        const SizedBox(height: 8),
-        Text(
-          'Photos + short context: hardware, NIST PQ, Bitcoin migration talk. Not advice.',
-          style: TextStyle(color: AppColors.muted.withValues(alpha: 0.92), height: 1.45, fontSize: 12),
-        ),
-        const SizedBox(height: 14),
-        _overviewRow(
-          narrow: narrow,
-          image: _overviewImage(_kOverviewIbmQuantum, 'IBM Quantum System One'),
-          text: Text.rich(
-            TextSpan(
-              style: body,
-              children: const [
-                TextSpan(text: 'Quantum computing', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.text)),
-                TextSpan(text: ' — Hardware scaling; fault-tolerant breaks are a separate timeline (often discussed as 2030s–2040s).'),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 22),
-        _overviewRow(
-          narrow: narrow,
-          image: _overviewImage(_kOverviewNist, 'NIST (main gate)'),
-          text: Text.rich(
-            TextSpan(
-              style: body,
-              children: [
-                const TextSpan(text: 'NIST post-quantum cryptography', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.text)),
-                const TextSpan(text: ' — In '),
-                const TextSpan(text: 'July 2022', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.amber)),
-                const TextSpan(
-                  text: ', NIST selected PQC algorithms (Kyber/Dilithium/SPHINCS+). In ',
-                ),
-                const TextSpan(text: 'August 2024', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.amber)),
-                const TextSpan(
-                  text: ', ',
-                ),
-                const TextSpan(text: 'FIPS 203–205', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.text)),
-                const TextSpan(text: ' (ML-KEM, ML-DSA, SLH-DSA).'),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 22),
-        _overviewRow(
-          narrow: narrow,
-          image: _overviewImage(_kOverviewBitcoin, 'Bitcoin'),
-          text: Text.rich(
-            TextSpan(
-              style: body,
-              children: const [
-                TextSpan(text: 'Bitcoin', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.text)),
-                TextSpan(
-                  text: ' — No network-wide PQ migration yet; dev/research discussion continues (Optech, mailing lists).',
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -699,6 +596,50 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
+  Widget _visualContextSection() {
+    const bodyStyle = TextStyle(color: AppColors.muted, fontSize: 13, height: 1.55);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Visual context',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.text),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Longer background tied to the overview images (not live RSS).',
+          style: TextStyle(color: AppColors.muted.withValues(alpha: 0.88), fontSize: 12, height: 1.45),
+        ),
+        const SizedBox(height: 16),
+        for (final story in kNewsVisualStories) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.asset(
+                story.assetPath,
+                fit: BoxFit.cover,
+                semanticLabel: story.title,
+                errorBuilder: (_, __, ___) => Container(
+                  color: AppColors.surface.withValues(alpha: 0.5),
+                  alignment: Alignment.center,
+                  child: const Text('Image unavailable', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(story.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, height: 1.25, color: AppColors.text)),
+          for (final p in story.paragraphs) ...[
+            const SizedBox(height: 10),
+            Text(p, style: bodyStyle),
+          ],
+          const SizedBox(height: 28),
+        ],
+      ],
+    );
+  }
+
   Widget _headlineCard(_NewsItem item) {
     final link = item.link;
     return Card(
@@ -740,7 +681,7 @@ class _NewsScreenState extends State<NewsScreen> {
                   ),
                   child: Text(
                     item.summary,
-                    style: const TextStyle(color: AppColors.muted, fontSize: 12, height: 1.4),
+                    style: const TextStyle(color: AppColors.muted, fontSize: 13, height: 1.45),
                   ),
                 ),
               ],
@@ -772,140 +713,64 @@ class _NewsScreenState extends State<NewsScreen> {
               setState(() => _future = _loadScreenData());
               await _future;
             },
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-                  children: [
-                    _predictionMarketCard(data.polymarket, data.polymarketError),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.amber.withValues(alpha: 0.12)),
-                        color: AppColors.surface.withValues(alpha: 0.45),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+              children: [
+                const Text(
+                  'Bitcoin news',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.text),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Recent headlines & summaries',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.amber),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'RSS excerpts; pull to refresh. Tap opens the article.',
+                  style: TextStyle(color: AppColors.muted.withValues(alpha: 0.88), fontSize: 12, height: 1.45),
+                ),
+                const SizedBox(height: 14),
+                for (final e in bundle.feeds.entries) ...[
+                  Text(e.key, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.amber)),
+                  const SizedBox(height: 8),
+                  if (bundle.errors[e.key] != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Unable to load feed: ${bundle.errors[e.key]}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.risk, height: 1.35),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'About this News screen',
-                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.text),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Polymarket snapshot, overview + charts, RSS headlines. Not advice—check sources.',
-                            style: TextStyle(color: AppColors.muted.withValues(alpha: 0.98), height: 1.45, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _overviewBlock(constraints.maxWidth),
-                    const SizedBox(height: 28),
-                    _milestoneChart(),
-                    const SizedBox(height: 28),
-                    _raceChart(),
-                    const SizedBox(height: 24),
-                    const Divider(height: 1),
-                    const SizedBox(height: 20),
-                    const Text('Recent headlines & summaries', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
-                    const SizedBox(height: 8),
-                    Text(
-                      'RSS excerpts from feeds; pull to refresh. Tap opens the article.',
-                      style: TextStyle(color: AppColors.muted.withValues(alpha: 0.88), fontSize: 12, height: 1.45),
-                    ),
-                    const SizedBox(height: 14),
-                    for (final e in bundle.feeds.entries) ...[
-                      Text(e.key, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.amber)),
-                      const SizedBox(height: 8),
-                      if (bundle.errors[e.key] != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Text(
-                            'Unable to load feed: ${bundle.errors[e.key]}',
-                            style: const TextStyle(fontSize: 12, color: AppColors.risk, height: 1.35),
-                          ),
-                        )
-                      else if (e.value.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 12),
-                          child: Text('No items returned for this feed.', style: TextStyle(color: AppColors.muted)),
-                        )
-                      else
-                        for (final item in e.value) _headlineCard(item),
-                      const SizedBox(height: 12),
-                    ],
-                  ],
-                );
-              },
+                    )
+                  else if (e.value.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Text('No items returned for this feed.', style: TextStyle(color: AppColors.muted)),
+                    )
+                  else
+                    for (final item in e.value) _headlineCard(item),
+                  const SizedBox(height: 12),
+                ],
+                const SizedBox(height: 8),
+                _visualContextSection(),
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 20),
+                const Text(
+                  'Polymarket',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.text),
+                ),
+                const SizedBox(height: 8),
+                _predictionMarketCard(data.polymarket, data.polymarketError),
+                const SizedBox(height: 28),
+                _milestoneChart(),
+                const SizedBox(height: 28),
+                _raceChart(),
+              ],
             ),
           );
         },
       ),
-    );
-  }
-}
-
-class _NewsOverviewImage extends StatelessWidget {
-  const _NewsOverviewImage({required this.assetPath, required this.caption});
-  final String assetPath;
-  final String caption;
-
-  static const _error = Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      Icon(Icons.broken_image_outlined, color: AppColors.muted),
-      SizedBox(height: 6),
-      Text(
-        'Image unavailable',
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 11, color: AppColors.muted),
-      ),
-    ],
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    // `start` would not give the image the row's max width; `fitWidth` then gets bad constraints.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: ColoredBox(
-            color: AppColors.surface,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final w = constraints.maxWidth;
-                if (!w.isFinite || w <= 0) {
-                  return const SizedBox(height: 120, child: Center(child: _error));
-                }
-                return Image.asset(
-                  assetPath,
-                  width: w,
-                  fit: BoxFit.fitWidth,
-                  alignment: Alignment.topCenter,
-                  gaplessPlayback: true,
-                  errorBuilder: (_, __, ___) => SizedBox(
-                    height: 120,
-                    width: w,
-                    child: const Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12),
-                        child: _error,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(caption, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
-      ],
     );
   }
 }

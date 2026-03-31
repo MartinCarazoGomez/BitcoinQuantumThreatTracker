@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -887,6 +889,64 @@ def render_bottom_tabbar():
                     st.rerun()
 
 
+def render_btc_year_chart():
+    """Plot daily BTC closes for the trailing year (Binance ``1d`` klines)."""
+    st.markdown(
+        '<div class="landing-section-title" style="margin-top:0.75rem;">BTC/USDT — last 12 months (1d)</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "One daily candle close per day from Binance public API (BTCUSDT). "
+        "Same series as GET /api/btc/price-history?days=365."
+    )
+    try:
+        from btc_price import fetch_btc_usd_prices
+
+        series = fetch_btc_usd_prices(365)
+        if not series:
+            st.warning("No price samples returned.")
+            return
+        xs = [t for t, _ in series]
+        ys = [p for _, p in series]
+        fig = go.Figure(
+            layout=go.Layout(
+                paper_bgcolor="#0a0f1a",
+                plot_bgcolor="#0a0f1a",
+                font=dict(color="#94a3b8"),
+                title=dict(text="BTC/USDT daily close (trailing year)", font=dict(color="#f1f5f9", size=14)),
+                xaxis=dict(
+                    title="Date (UTC)",
+                    gridcolor="rgba(71,85,105,0.3)",
+                    showgrid=True,
+                ),
+                yaxis=dict(
+                    title="USD",
+                    gridcolor="rgba(71,85,105,0.3)",
+                    tickformat=",.0f",
+                ),
+                height=300,
+                margin=dict(t=44, b=48, l=56, r=16),
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=xs,
+                y=ys,
+                mode="lines",
+                line=dict(color="#f59e0b", width=2),
+                name="BTC/USDT",
+                hovertemplate="%{x|%Y-%m-%d}<br>$%{y:,.2f}<extra></extra>",
+            )
+        )
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config=dict(displayModeBar=True, displaylogo=False),
+        )
+    except Exception as ex:
+        st.caption(f"Could not load BTC price: {ex}")
+
+
 def render_home():
     """Home / landing — clear hierarchy: pick a path, then reference tools."""
     st.markdown(
@@ -948,6 +1008,8 @@ def render_home():
         """,
         unsafe_allow_html=True,
     )
+
+    render_btc_year_chart()
 
     st.markdown(
         """
@@ -1057,71 +1119,103 @@ def _strip_html(text):
     return html.unescape(text).strip()
 
 
-# Image URLs for News section (Wikimedia Commons, public domain / CC)
-NEWS_IMAGES = {
-    "quantum": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/IBM_Quantum_System_One.jpg/640px-IBM_Quantum_System_One.jpg",
-    "nist": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/NIST_Campus_Main_Gate.jpg/640px-NIST_Campus_Main_Gate.jpg",
-    "bitcoin": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/512px-Bitcoin.svg.png",
-}
+def _entry_feed_html(entry):
+    """Prefer RSS content:encoded when feedparser exposes a longer body than summary."""
+    raw = entry.get("summary", "") or entry.get("description", "") or ""
+    content = getattr(entry, "content", None)
+    if content and isinstance(content, list):
+        for part in content:
+            if isinstance(part, dict):
+                v = part.get("value", "")
+                if isinstance(v, str) and len(v.strip()) > len(raw):
+                    raw = v
+    return raw
+
+
+_NEWS_IMG_DIR = Path(__file__).resolve().parent / "bitcoin_quantum_threat_app" / "assets" / "images"
+
+# Long-form copy paired with overview images (mirrors Flutter `news_visual_context.dart`).
+_NEWS_VISUAL_STORIES = [
+    (
+        "overview_nist.jpg",
+        "NIST and the post-quantum standards story",
+        [
+            "The National Institute of Standards and Technology (NIST) ran a public, multi-year competition to select algorithms that should replace RSA, finite-field Diffie–Hellman, and elliptic-curve schemes once large-scale quantum computers exist. The winners map to what you now see in federal profiles: ML-KEM (from Kyber) for key encapsulation, ML-DSA (from Dilithium) for general-purpose signatures, and SLH-DSA (from SPHINCS+) for conservative hash-based signing where larger signatures are acceptable.",
+            "The 2024 publication of FIPS 203, 204, and 205 matters because it gives vendors, regulators, and enterprises a concrete target for new libraries, hardware security modules, and procurement rules. That does not mean Bitcoin “automatically” adopts NIST curves or Dilithium tomorrow: the chain’s consensus rules are separate from TLS or VPN stacks. But the same organizations that custody bitcoin, run exchanges, and build wallets will be upgrading everything around the chain—so the NIST timeline sets expectations for how fast the broader cryptography ecosystem moves.",
+            "For Bitcoin specifically, the interesting tension is between **off-chain** systems (where you might plug in PQC for transport and authentication quickly) and **on-chain** script, where any new signature type requires a careful soft fork, reference implementations, and years of review. NIST standardization is therefore a backdrop: it tells you what the world will expect from “modern crypto,” while Bitcoin’s engineers still have to argue about witness versions, backward compatibility, and migration incentives.",
+            "None of this replaces scenario modeling. Standards reduce interoperability risk; they do not tell you whether quantum capability or user migration wins the race in a given decade. Use the toolkit’s simulator to stress **break year** and **migration** assumptions—the NIST story is why hardware and software vendors will feel pressure to ship PQC even before a quantum machine breaks a key in the wild.",
+        ],
+    ),
+    (
+        "overview_bitcoin.png",
+        "Bitcoin: where quantum risk actually sits",
+        [
+            "Bitcoin’s mining puzzle is built on SHA-256 preimage search. Quantum algorithms like Grover provide at most a quadratic speedup for unstructured search, which shifts security margins but does not flip the network overnight in the way Shor’s algorithm threatens public-key schemes. The headline quantum issue for holders is therefore not “SHA-256 is broken,” it is **signatures**: today’s spends reveal ECDSA or Schnorr public keys tied to those coins, and a future machine that runs Shor efficiently could derive private keys from those public keys for the affected outputs.",
+            "Taproot (activated November 2021) improves privacy and efficiency—Schnorr signatures, MAST-style script hiding, and better batch verification—but it does not remove the need for a post-quantum signature migration path. It changes **how** keys and scripts appear on chain, not the fundamental fact that classical elliptic-curve assumptions underpin authorization until consensus adopts new primitives.",
+            "Risk accumulates where users reuse addresses, leave coins in old script types, or defer moving value while signatures pile up on-chain. Cold storage that has **never** published a public key in a spend is in a different exposure class than hot wallets that sign frequently. That nuance is why aggregate “quantum threat” numbers are scenario-dependent: the simulator’s **vulnerable share** slider exists to express how much value might sit under keys that are already exposed or easy to target.",
+            "Engineering proposals for Bitcoin-level migration—new output types, hybrid classical/post-quantum schemes, and social processes for upgrade—are active research and debate, not a single shipped knob. The photos and headlines you see in the feeds sit in that context: they are **news** about regulation, markets, and technology, while this app’s charts express **structured uncertainty** about timing. Read them together: headlines for what happened this week, curves for what might happen across decades.",
+        ],
+    ),
+    (
+        "overview_ibm_quantum.jpg",
+        "IBM-style hardware milestones vs breaking ECDSA",
+        [
+            "IBM and other labs publish processor generations with eye-catching **physical** qubit counts—Condor, Heron, and roadmap slides that stretch into the 2030s. Those numbers describe chips and systems used for chemistry simulation, error-correction research, and benchmarking. They are not the same as “logical qubits” that would execute a full fault-tolerant Shor instance against secp256k1 at scale, and they are not a direct readout of calendar time until a key is broken.",
+            "Useful cryptanalysis against elliptic-curve discrete logarithms needs sustained, error-corrected computation. Roadmap targets (for example, public IBM materials discussing thousands of logical qubits later this decade) are **aspirational engineering goals**. They can move earlier or later as materials science, control electronics, and decoding algorithms improve. That is why the app treats “quantum break year” as a parameter you sweep rather than a single point estimate from a press release.",
+            "The milestone chart on this screen shows documented **hardware announcements** on a log scale; the race chart shows a **conceptual** overlap between quantum capability and migration. Neither chart claims that a particular IBM chip breaks Bitcoin next Tuesday. They orient you: hardware is advancing quickly in the lab, while Bitcoin migration is a social-technical process that can lag or lead depending on policy, UX, and incentives.",
+            "When you read news about qubit records, pair it with this distinction: **laboratory scale** versus **cryptanalytic reality** versus **protocol migration**. The toolkit is built to make that third leg—migration speed and vulnerable share—as explicit as the quantum curve, because headlines about chips alone will not tell you whether funds are safe in the 2040s.",
+        ],
+    ),
+]
 
 
 def render_news():
-    """News & updates — real information with images and charts."""
+    """News & updates — charts and RSS headlines."""
     render_back_button()
     st.title("News & Updates")
     st.markdown("Current state of quantum computing, post-quantum cryptography, and Bitcoin migration.")
 
-    # Overview with images and charts
-    st.subheader("Overview")
+    st.subheader("Bitcoin news")
+    st.subheader("Recent headlines & summaries")
+    try:
+        import feedparser
+        feeds = [
+            ("https://cointelegraph.com/rss", "Crypto & Blockchain"),
+            ("https://bitcoinmagazine.com/.feed", "Bitcoin"),
+        ]
+        for url, name in feeds:
+            st.markdown(f"**{name}**")
+            try:
+                d = feedparser.parse(url, request_headers={"User-Agent": "Mozilla/5.0"})
+                for e in d.entries[:4]:
+                    title = e.get("title", "")
+                    pub = e.get("published", "")[:10] if e.get("published") else ""
+                    summary = _strip_html(_entry_feed_html(e))
+                    if len(summary) > 2800:
+                        summary = summary[:2797] + "..."
+                    st.markdown(f"**{title}** {f'({pub})' if pub else ''}")
+                    if summary:
+                        st.markdown(f"> {summary}")
+                    st.markdown("")
+            except Exception as ex:
+                st.caption(f"Unable to load feed: {ex}")
+            st.markdown("")
+    except ImportError:
+        st.info("Install feedparser: `pip install feedparser` for live headlines and summaries.")
 
-    # 1. Quantum computing — image + text
-    col_img, col_txt = st.columns([1, 2])
-    with col_img:
-        try:
-            st.image(NEWS_IMAGES["quantum"], caption="IBM Quantum System One", use_container_width=True)
-        except Exception:
-            pass
-    with col_txt:
-        st.markdown(
-            "**Quantum computing** — Progress is accelerating. Google's 2019 Sycamore demonstration showed "
-            "quantum supremacy (53 qubits). IBM, IonQ, and others are scaling qubit counts into the hundreds. "
-            "Current estimates suggest large-scale fault-tolerant machines capable of breaking ECDSA and RSA "
-            "could arrive in the 2030s–2040s, though timelines are uncertain."
-        )
+    st.subheader("Visual context — stories behind the images")
+    st.caption("Longer background tied to the overview images; not live RSS.")
+    for fname, vtitle, paras in _NEWS_VISUAL_STORIES:
+        img_path = _NEWS_IMG_DIR / fname
+        if img_path.exists():
+            st.image(str(img_path), use_container_width=True)
+        st.markdown(f"### {vtitle}")
+        for para in paras:
+            st.markdown(para)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # 2. NIST PQC — image + text
-    col_img2, col_txt2 = st.columns([1, 2])
-    with col_img2:
-        try:
-            st.image(NEWS_IMAGES["nist"], caption="NIST campus", use_container_width=True)
-        except Exception:
-            pass
-    with col_txt2:
-        st.markdown(
-            "**NIST post-quantum cryptography** — In **July 2022**, NIST selected algorithms for standardization "
-            "(including CRYSTALS-Kyber and CRYSTALS-Dilithium, later ML-KEM / ML-DSA, and SPHINCS+-related SLH-DSA). "
-            "In **August 2024**, NIST published **FIPS 203, 204, and 205** (ML-KEM, ML-DSA, SLH-DSA). "
-            "Adoption in TLS and other systems is ongoing."
-        )
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # 3. Bitcoin — image + text
-    col_img3, col_txt3 = st.columns([1, 2])
-    with col_img3:
-        try:
-            st.image(NEWS_IMAGES["bitcoin"], caption="Bitcoin", use_container_width=True)
-        except Exception:
-            pass
-    with col_txt3:
-        st.markdown(
-            "**Bitcoin** — There is no network-wide post-quantum migration yet. Developers and researchers discuss "
-            "post-quantum signatures and soft-fork trade-offs in public forums (e.g. Bitcoin dev mailing list, "
-            "Bitcoin Optech newsletter). Hybrid schemes (ECDSA plus a post-quantum component) are often discussed; "
-            "coordination would be required across the ecosystem."
-        )
+    st.divider()
+    st.subheader("Polymarket")
+    st.caption("Live prediction-market card is in the Flutter app; this page uses charts below.")
 
     # Chart: Quantum computing milestones (qubit progress)
     st.subheader("Quantum computing progress")
@@ -1160,35 +1254,6 @@ def render_news():
     fig_race.add_trace(go.Scatter(x=years, y=migration_late, name="Migration (late)", line=dict(color="#f87171", width=2, dash="dot")))
     st.plotly_chart(fig_race, use_container_width=True)
     st.caption("Early migration stays ahead of quantum; late migration risks a dangerous overlap.")
-
-    st.divider()
-    st.subheader("Recent Headlines & Summaries")
-    try:
-        import feedparser
-        feeds = [
-            ("https://cointelegraph.com/rss", "Crypto & Blockchain"),
-            ("https://bitcoinmagazine.com/.feed", "Bitcoin"),
-        ]
-        for url, name in feeds:
-            st.markdown(f"**{name}**")
-            try:
-                d = feedparser.parse(url, request_headers={"User-Agent": "Mozilla/5.0"})
-                for e in d.entries[:4]:
-                    title = e.get("title", "")
-                    desc = e.get("summary", e.get("description", ""))
-                    pub = e.get("published", "")[:10] if e.get("published") else ""
-                    summary = _strip_html(desc)
-                    if len(summary) > 400:
-                        summary = summary[:397] + "..."
-                    st.markdown(f"**{title}** {f'({pub})' if pub else ''}")
-                    if summary:
-                        st.markdown(f"> {summary}")
-                    st.markdown("")
-            except Exception as ex:
-                st.caption(f"Unable to load feed: {ex}")
-            st.markdown("")
-    except ImportError:
-        st.info("Install feedparser: `pip install feedparser` for live headlines and summaries.")
 
     if st.button("← Back to Home", key="news_back"):
         st.session_state["page"] = "home"
