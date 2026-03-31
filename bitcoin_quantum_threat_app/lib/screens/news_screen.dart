@@ -497,7 +497,7 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Same model family as the Simulator—illustrative only.',
+          'Same model family as the full risk simulator—illustrative only.',
           style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
         ),
         const SizedBox(height: 8),
@@ -717,6 +717,15 @@ class _NewsScreenState extends State<NewsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
               children: [
                 const Text(
+                  'Polymarket',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.text),
+                ),
+                const SizedBox(height: 8),
+                _predictionMarketCard(data.polymarket, data.polymarketError),
+                const SizedBox(height: 24),
+                const Divider(height: 1),
+                const SizedBox(height: 20),
+                const Text(
                   'Bitcoin news',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.text),
                 ),
@@ -756,13 +765,6 @@ class _NewsScreenState extends State<NewsScreen> {
                 const SizedBox(height: 16),
                 const Divider(height: 1),
                 const SizedBox(height: 20),
-                const Text(
-                  'Polymarket',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.text),
-                ),
-                const SizedBox(height: 8),
-                _predictionMarketCard(data.polymarket, data.polymarketError),
-                const SizedBox(height: 28),
                 _milestoneChart(),
                 const SizedBox(height: 28),
                 _raceChart(),

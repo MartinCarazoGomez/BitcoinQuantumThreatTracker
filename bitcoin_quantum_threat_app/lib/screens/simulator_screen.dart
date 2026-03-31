@@ -104,7 +104,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
     final rec = makeRecommendation(_scenario, verdict, crit.year, m50, q50);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Risk Simulator')),
+      appBar: AppBar(title: const Text('Full risk simulator')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
         children: [

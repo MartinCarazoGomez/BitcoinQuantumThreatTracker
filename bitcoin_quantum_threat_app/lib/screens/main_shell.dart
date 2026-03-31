@@ -48,7 +48,7 @@ class _MainShellState extends State<MainShell> {
           NavigationDestination(
             icon: Icon(Icons.area_chart_outlined),
             selectedIcon: Icon(Icons.area_chart),
-            label: 'Simulator',
+            label: 'Full risk simulator',
           ),
           NavigationDestination(
             icon: Icon(Icons.bolt_outlined),

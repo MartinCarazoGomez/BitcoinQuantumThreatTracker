@@ -861,14 +861,14 @@ def apply_scenario_to_state(scenario):
 
 
 def render_bottom_tabbar():
-    """Fixed bottom navigation — matches Flutter: Home + Simulator, Quick, News, Timeline, Glossary."""
+    """Fixed bottom navigation — matches Flutter: Home + full risk simulator, Quick, News, Timeline, Glossary."""
     page = st.session_state.get("page", "home")
     st.markdown('<div class="app-tabbar-trigger"></div>', unsafe_allow_html=True)
     c0, c1, c2, c3, c4, c5 = st.columns(6)
     # Two-line labels: icon (emoji) on top, short name below — same order as Flutter app
     tabs = [
         ("home", "tabbar_home", "🏠\nHome"),
-        ("simulator", "tabbar_sim", "📊\nSimulator"),
+        ("simulator", "tabbar_sim", "📊\nFull risk"),
         ("quick_check", "tabbar_quick", "⚡\nQuick"),
         ("news", "tabbar_news", "📰\nNews"),
         ("timeline", "tabbar_timeline", "📅\nTimeline"),
@@ -897,12 +897,12 @@ def render_btc_year_chart():
     )
     st.caption(
         "Daily closes from public APIs (Binance first; CoinGecko / CryptoCompare if needed). "
-        "Use the slider below the chart to show fewer days (≈1 month) or more (up to ~1000 days fetched)."
+        "Use the slider below the chart to show fewer days (≈1 month) or more (up to ~15 years of daily data fetched)."
     )
     try:
-        from btc_price import fetch_btc_usd_prices
+        from btc_price import BTC_HISTORY_MAX_DAYS, fetch_btc_usd_prices
 
-        series_full = fetch_btc_usd_prices(1000)
+        series_full = fetch_btc_usd_prices(BTC_HISTORY_MAX_DAYS)
         if not series_full:
             st.warning("No price samples returned.")
             return
@@ -940,6 +940,7 @@ def render_btc_year_chart():
                     title="USD",
                     gridcolor="rgba(71,85,105,0.3)",
                     tickformat=",.0f",
+                    dtick=20000,
                 ),
                 height=300,
                 margin=dict(t=44, b=48, l=56, r=16),
@@ -979,6 +980,7 @@ def render_home():
         <div class="landing-hero">
             <div class="landing-badge">Decision intelligence · Scenario modeling</div>
             <h1 class="landing-title">Bitcoin Quantum Threat Toolkit</h1>
+            <p class="landing-subtitle">How close is quantum to breaking Bitcoin—and how fast can the network migrate?</p>
         </div>
         </div>
         """,
@@ -1006,13 +1008,13 @@ def render_home():
             """
             <div class="landing-cta-pill">
                 <div class="landing-cta-kicker">Deep dive</div>
-                <p class="landing-cta-title">Risk Simulator</p>
+                <p class="landing-cta-title">Full risk simulator</p>
                 <p class="landing-cta-desc">Sliders, three scenario presets, Plotly charts, compare runs, sensitivity sweeps, and CSV export.</p>
             </div>
             """,
             unsafe_allow_html=True,
         )
-        if st.button("Open Risk Simulator", use_container_width=True, key="nav_sim"):
+        if st.button("Open full risk simulator", use_container_width=True, key="nav_sim"):
             st.session_state["page"] = "simulator"
             st.rerun()
 
@@ -1026,7 +1028,7 @@ def render_home():
         </div>
         <div class="landing-section-title">Navigation</div>
         <p style="text-align:center;color:#94a3b8;font-size:0.92rem;max-width:520px;margin:0 auto 0.5rem;line-height:1.55;">
-            Use the <strong style="color:#cbd5e1;">bottom bar</strong> to switch between Home, Simulator, Quick Check, News, Timeline, and Glossary—like the Flutter app.
+            Use the <strong style="color:#cbd5e1;">bottom bar</strong> to switch between Home, full risk simulator, Quick Check, News, Timeline, and Glossary—like the Flutter app.
         </p>
         </div>
         """,
@@ -1035,22 +1037,20 @@ def render_home():
 
     render_btc_year_chart()
 
-    st.markdown(
-        """
-        <div class="landing-wrap">
-        <div class="landing-workflow">
-            <h4>Suggested workflow</h4>
-            <ol>
-                <li><strong style="color:#cbd5e1;">Orient</strong> — Quick Check or News / Timeline (bottom bar).</li>
-                <li><strong style="color:#cbd5e1;">Model</strong> — Risk Simulator on <strong style="color:#cbd5e1;">Moderate</strong> preset, then tune sliders.</li>
-                <li><strong style="color:#cbd5e1;">Validate</strong> — Compare scenarios and Sensitivity tab; note any critical year.</li>
+    with st.expander("Suggested workflow", expanded=False):
+        st.markdown(
+            """
+            <div class="landing-workflow-inner">
+            <ol style="margin:0;padding-left:1.25rem;color:#94a3b8;font-size:0.9rem;line-height:1.65;">
+                <li style="margin-bottom:0.35rem;"><strong style="color:#cbd5e1;">Orient</strong> — Quick Check or News / Timeline (bottom bar).</li>
+                <li style="margin-bottom:0.35rem;"><strong style="color:#cbd5e1;">Model</strong> — Full risk simulator on <strong style="color:#cbd5e1;">Moderate</strong> preset, then tune sliders.</li>
+                <li style="margin-bottom:0.35rem;"><strong style="color:#cbd5e1;">Validate</strong> — Compare scenarios and Sensitivity tab; note any critical year.</li>
                 <li><strong style="color:#cbd5e1;">Share</strong> — Export CSV for slides or documentation.</li>
             </ol>
-        </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown(
         """
@@ -1120,13 +1120,13 @@ def render_quick_check():
 
         if score <= 2:
             st.success("**Low risk** — Your assumptions suggest the race is manageable. Migration likely ahead of threat.")
-            st.info("Consider using the full Simulator to stress-test different scenarios.")
+            st.info("Consider using the full risk simulator to stress-test different scenarios.")
         elif score <= 5:
             st.warning("**Moderate risk** — Some tension between quantum timelines and migration. Coordination is key.")
-            st.info("Use the Simulator to see how pulling migration forward changes outcomes.")
+            st.info("Use the full risk simulator to see how pulling migration forward changes outcomes.")
         else:
             st.error("**High risk** — Quantum could outpace migration under your assumptions. Urgency is warranted.")
-            st.info("Run the full Simulator with pessimistic presets to explore mitigation options.")
+            st.info("Run the full risk simulator with pessimistic presets to explore mitigation options.")
 
     if st.button("← Back to Home", key="qc_back"):
         st.session_state["page"] = "home"
@@ -1199,6 +1199,10 @@ def render_news():
     st.title("News & Updates")
     st.markdown("Current state of quantum computing, post-quantum cryptography, and Bitcoin migration.")
 
+    st.subheader("Polymarket")
+    st.caption("Live prediction-market card is in the Flutter app; this page uses charts further down.")
+    st.divider()
+
     st.subheader("Bitcoin news")
     st.subheader("Recent headlines & summaries")
     try:
@@ -1238,8 +1242,6 @@ def render_news():
             st.markdown(para)
 
     st.divider()
-    st.subheader("Polymarket")
-    st.caption("Live prediction-market card is in the Flutter app; this page uses charts below.")
 
     # Chart: Quantum computing milestones (qubit progress)
     st.subheader("Quantum computing progress")
@@ -1369,7 +1371,7 @@ def render_timeline():
 def render_simulator():
     """Full risk simulator with charts and parameters."""
     render_back_button()
-    st.title("Risk Simulator")
+    st.title("Full risk simulator")
     st.markdown(
         '<div class="hero-card">'
         "Explore the timing race between quantum capability and Bitcoin migration. "

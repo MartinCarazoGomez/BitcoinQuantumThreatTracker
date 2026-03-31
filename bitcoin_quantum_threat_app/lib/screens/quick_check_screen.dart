@@ -134,7 +134,7 @@ class _QuickCheckScreenState extends State<QuickCheckScreen> {
       bg = const Color(0xFF14532d).withValues(alpha: 0.45);
       border = const Color(0xFF22c55e).withValues(alpha: 0.45);
       headline = 'Low risk — migration likely ahead of quantum on your assumptions.';
-      followUp = 'Try the Simulator for more scenarios.';
+      followUp = 'Try the full risk simulator for more scenarios.';
     } else if (score <= 5) {
       bandColor = AppColors.amber;
       bg = const Color(0xFF713f12).withValues(alpha: 0.4);
@@ -146,7 +146,7 @@ class _QuickCheckScreenState extends State<QuickCheckScreen> {
       bg = const Color(0xFF7f1d1d).withValues(alpha: 0.45);
       border = AppColors.risk.withValues(alpha: 0.45);
       headline = 'High risk — quantum could lead migration on your assumptions.';
-      followUp = 'Simulator: pessimistic preset + sliders.';
+      followUp = 'Full risk simulator: pessimistic preset + sliders.';
     }
 
     return Column(

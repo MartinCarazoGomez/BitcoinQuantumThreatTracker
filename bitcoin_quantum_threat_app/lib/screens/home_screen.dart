@@ -47,6 +47,20 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            AppStrings.homeTagline,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.muted.withValues(alpha: 0.95),
+              fontSize: 14,
+              height: 1.45,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
         const SizedBox(height: 28),
         Text(
           'Get started',
@@ -69,7 +83,7 @@ class HomeScreen extends StatelessWidget {
         _HomeActionCard(
           icon: Icons.area_chart_rounded,
           iconColor: AppColors.quantum,
-          title: 'Risk Simulator',
+          title: 'Full risk simulator',
           subtitle: 'Sliders, compare, sensitivity, CSV.',
           emphasized: false,
           onTap: onOpenSimulator,
@@ -107,26 +121,26 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 28),
         Card(
           margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.route_outlined, size: 20, color: AppColors.amber.withValues(alpha: 0.9)),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Suggested workflow',
-                      style: t.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.text,
-                            fontSize: 16,
-                          ),
-                    ),
-                  ],
+          clipBehavior: Clip.antiAlias,
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              initiallyExpanded: false,
+              tilePadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+              childrenPadding: const EdgeInsets.fromLTRB(8, 0, 16, 14),
+              expandedCrossAxisAlignment: CrossAxisAlignment.start,
+              iconColor: AppColors.muted,
+              collapsedIconColor: AppColors.muted,
+              leading: Icon(Icons.route_outlined, size: 20, color: AppColors.amber.withValues(alpha: 0.9)),
+              title: Text(
+                'Suggested workflow',
+                style: t.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text,
+                  fontSize: 16,
                 ),
-                const SizedBox(height: 14),
+              ),
+              children: [
                 ...List.generate(AppStrings.workflowSteps.length, (i) {
                   return Padding(
                     padding: EdgeInsets.only(bottom: i == AppStrings.workflowSteps.length - 1 ? 0 : 12),
@@ -328,7 +342,7 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
                       gridData: FlGridData(
                         show: true,
                         drawVerticalLine: false,
-                        horizontalInterval: (hi - lo) > 0 ? (hi - lo) / 4 : 1,
+                        horizontalInterval: 20000,
                         getDrawingHorizontalLine: (v) => FlLine(
                           color: AppColors.muted.withValues(alpha: 0.12),
                           strokeWidth: 1,
@@ -340,8 +354,8 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
                         leftTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
-                            reservedSize: 48,
-                            interval: (hi - lo) > 0 ? (hi - lo) / 4 : null,
+                            reservedSize: 52,
+                            interval: 20000,
                             getTitlesWidget: (v, meta) {
                               return Text(
                                 _fmtUsd(v),

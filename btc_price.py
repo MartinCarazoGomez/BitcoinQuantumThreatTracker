@@ -1,8 +1,8 @@
 """
 BTC daily price history from public APIs (no key).
 
-Primary: **Binance** ``1d`` klines. Fallbacks: **CoinGecko** ``market_chart``,
-**CryptoCompare** ``histoday`` (helps when Binance is geo-blocked or Flutter web CORS blocks Binance).
+Primary: **Binance** ``1d`` klines (paginated when >1000 days). Fallbacks: **CoinGecko**
+``market_chart`` (``days=max`` for long spans), **CryptoCompare** ``histoday`` (up to 2000).
 
 Used by Streamlit (`app.py`), FastAPI (`api_btc_price.py`), and Flutter (`btc_price.dart`).
 """
@@ -10,6 +10,7 @@ Used by Streamlit (`app.py`), FastAPI (`api_btc_price.py`), and Flutter (`btc_pr
 from __future__ import annotations
 
 import json
+import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -19,6 +20,9 @@ BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines"
 CRYPTOCOMPARE_HISTODAY = "https://min-api.cryptocompare.com/data/v2/histoday"
 
 _UA = {"User-Agent": "BitcoinQuantumThreatToolkit/1.0 (educational)"}
+
+# ~15 years of daily candles — max slider / fetch target (Binance needs multiple requests).
+BTC_HISTORY_MAX_DAYS = int(15 * 365.25)
 
 
 def _fetch_binance(days: int) -> list[tuple[datetime, float]]:
@@ -44,6 +48,51 @@ def _fetch_binance(days: int) -> list[tuple[datetime, float]]:
     return out
 
 
+def _fetch_binance_paginated(max_days: int) -> list[tuple[datetime, float]]:
+    """Walk Binance ``1d`` klines backward in chunks of 1000 (API limit)."""
+    end_ms = int(time.time() * 1000)
+    cutoff_ms = end_ms - int(max_days * 24 * 60 * 60 * 1000)
+    by_ts: dict[int, float] = {}
+    end_cursor = end_ms
+    for _ in range(20):
+        qs = urllib.parse.urlencode(
+            {
+                "symbol": "BTCUSDT",
+                "interval": "1d",
+                "limit": "1000",
+                "endTime": str(end_cursor),
+            }
+        )
+        url = f"{BINANCE_KLINES_URL}?{qs}"
+        req = urllib.request.Request(url, headers=_UA)
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            klines = json.loads(resp.read().decode())
+        if not isinstance(klines, list) or not klines:
+            break
+        for k in klines:
+            if not isinstance(k, list) or len(k) < 5:
+                continue
+            o = int(k[0])
+            if o < cutoff_ms:
+                continue
+            by_ts[o] = float(k[4])
+        oldest = int(klines[0][0])
+        if oldest <= cutoff_ms:
+            break
+        if len(klines) < 1000:
+            break
+        end_cursor = oldest - 1
+    if not by_ts:
+        raise ValueError("empty klines (paginated)")
+    out = [
+        (datetime.fromtimestamp(ts / 1000.0, tz=timezone.utc), by_ts[ts])
+        for ts in sorted(by_ts.keys())
+    ]
+    if len(out) > max_days:
+        out = out[-max_days:]
+    return out
+
+
 def _fetch_coingecko(days: int) -> list[tuple[datetime, float]]:
     qs = urllib.parse.urlencode({"vs_currency": "usd", "days": str(days)})
     url = f"{COINGECKO_MARKET_CHART}?{qs}"
@@ -63,8 +112,31 @@ def _fetch_coingecko(days: int) -> list[tuple[datetime, float]]:
     return out
 
 
+def _fetch_coingecko_long(max_days: int) -> list[tuple[datetime, float]]:
+    """CoinGecko ``days=max`` then keep the most recent ``max_days`` samples."""
+    qs = urllib.parse.urlencode({"vs_currency": "usd", "days": "max"})
+    url = f"{COINGECKO_MARKET_CHART}?{qs}"
+    req = urllib.request.Request(url, headers=_UA)
+    with urllib.request.urlopen(req, timeout=90) as resp:
+        data = json.loads(resp.read().decode())
+    prices = data.get("prices") or []
+    out: list[tuple[datetime, float]] = []
+    for row in prices:
+        if not isinstance(row, (list, tuple)) or len(row) < 2:
+            continue
+        ts_ms, price = row[0], row[1]
+        dt = datetime.fromtimestamp(float(ts_ms) / 1000.0, tz=timezone.utc)
+        out.append((dt, float(price)))
+    if not out:
+        raise ValueError("empty prices (max)")
+    if len(out) > max_days:
+        out = out[-max_days:]
+    return out
+
+
 def _fetch_cryptocompare(days: int) -> list[tuple[datetime, float]]:
-    qs = urllib.parse.urlencode({"fsym": "BTC", "tsym": "USD", "limit": str(days)})
+    lim = min(days, 2000)
+    qs = urllib.parse.urlencode({"fsym": "BTC", "tsym": "USD", "limit": str(lim)})
     url = f"{CRYPTOCOMPARE_HISTODAY}?{qs}"
     req = urllib.request.Request(url, headers=_UA)
     with urllib.request.urlopen(req, timeout=45) as resp:
@@ -91,25 +163,36 @@ def _fetch_cryptocompare(days: int) -> list[tuple[datetime, float]]:
 
 def fetch_btc_usd_prices_with_source(days: int = 365) -> tuple[list[tuple[datetime, float]], str]:
     """
-    Returns (series, source_name). Tries Binance, then CoinGecko, then CryptoCompare.
+    Returns (series, source_name). For ``days`` > 1000, uses Binance pagination or CoinGecko max.
     """
     if days < 1:
         raise ValueError("days must be >= 1")
-    if days > 1000:
-        raise ValueError("days must be <= 1000")
+    if days > BTC_HISTORY_MAX_DAYS:
+        raise ValueError(f"days must be <= {BTC_HISTORY_MAX_DAYS} (~15 years)")
 
-    attempts: tuple[tuple[str, object], ...] = (
-        ("binance", _fetch_binance),
-        ("coingecko", _fetch_coingecko),
-        ("cryptocompare", _fetch_cryptocompare),
-    )
     errors: list[str] = []
-    for name, fn in attempts:
-        try:
-            rows = fn(days)
-            return rows, name
-        except Exception as e:
-            errors.append(f"{name}: {e}")
+
+    if days <= 1000:
+        for name, fn in (
+            ("binance", lambda: _fetch_binance(days)),
+            ("coingecko", lambda: _fetch_coingecko(days)),
+            ("cryptocompare", lambda: _fetch_cryptocompare(days)),
+        ):
+            try:
+                return fn(), name
+            except Exception as e:
+                errors.append(f"{name}: {e}")
+    else:
+        for name, fn in (
+            ("binance", lambda: _fetch_binance_paginated(days)),
+            ("coingecko", lambda: _fetch_coingecko_long(days)),
+            ("cryptocompare", lambda: _fetch_cryptocompare(days)),
+        ):
+            try:
+                return fn(), name
+            except Exception as e:
+                errors.append(f"{name}: {e}")
+
     raise RuntimeError("All BTC price sources failed: " + " | ".join(errors))
 
 

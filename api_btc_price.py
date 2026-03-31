@@ -12,7 +12,7 @@ import urllib.error
 
 from fastapi import FastAPI, HTTPException, Query
 
-from btc_price import btc_price_history_json
+from btc_price import BTC_HISTORY_MAX_DAYS, btc_price_history_json
 
 app = FastAPI(title="Bitcoin Quantum Threat Toolkit — BTC price history")
 
@@ -20,7 +20,9 @@ _FETCH_ERRORS = (urllib.error.URLError, urllib.error.HTTPError, OSError, ValueEr
 
 
 @app.get("/api/btc/price-history")
-def btc_price_history(days: int = Query(365, ge=1, le=2000, description="Trailing window in days")):
+def btc_price_history(
+    days: int = Query(365, ge=1, le=BTC_HISTORY_MAX_DAYS, description="Trailing window in days (max ~15 years)"),
+):
     """Return BTC/USD time series until now (UTC ISO timestamps)."""
     try:
         return btc_price_history_json(days)

@@ -15,8 +15,8 @@ const _kUa = {
   'Accept': 'application/json',
 };
 
-/// Binance klines max per request; also caps our fetch size.
-const int kBtcPriceMaxFetchDays = 1000;
+/// ~15 years — matches server [BTC_HISTORY_MAX_DAYS] (Binance paginates beyond 1000).
+const int kBtcPriceMaxFetchDays = 5478;
 
 /// Default visible window (~12 months).
 const int kBtcPriceDefaultWindowDays = 365;
@@ -24,23 +24,27 @@ const int kBtcPriceDefaultWindowDays = 365;
 /// Minimum window (~1 month), when enough data exists.
 const int kBtcPriceMinWindowDays = 30;
 
-/// Daily BTC price history for the last [days] days.
+/// Daily BTC history up to [days] (max [kBtcPriceMaxFetchDays]).
 ///
-/// Tries **Binance** `1d` klines first (best: explicit daily candles). If that fails
-/// (common on **Flutter web**: browsers block Binance with CORS), falls back to
-/// **CoinGecko** `market_chart`, then **CryptoCompare** `histoday` (often works in web).
+/// Binance paginates when [days] > 1000. Fallbacks: CoinGecko ``days=max``, CryptoCompare (≤2000).
 Future<List<BtcPricePoint>> fetchBtcUsdHistory({int days = 365}) async {
-  if (days < 1 || days > 1000) {
-    throw ArgumentError.value(days, 'days', 'must be 1–1000');
+  if (days < 1 || days > kBtcPriceMaxFetchDays) {
+    throw ArgumentError.value(days, 'days', 'must be 1–$kBtcPriceMaxFetchDays');
   }
   final failures = <String>[];
 
   try {
-    return await _fetchBinance(days);
+    if (days <= 1000) {
+      return await _fetchBinance(days);
+    }
+    return await _fetchBinancePaginated(days);
   } catch (e) {
     failures.add('Binance: $e');
   }
   try {
+    if (days > 1000) {
+      return await _fetchCoinGeckoLong(days);
+    }
     return await _fetchCoinGecko(days);
   } catch (e) {
     failures.add('CoinGecko: $e');
@@ -83,6 +87,48 @@ Future<List<BtcPricePoint>> _fetchBinance(int days) async {
   return out;
 }
 
+Future<List<BtcPricePoint>> _fetchBinancePaginated(int maxDays) async {
+  final nowMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+  final cutoffMs = nowMs - maxDays * 24 * 60 * 60 * 1000;
+  final byTs = <int, double>{};
+  var endCursor = nowMs;
+  for (var iter = 0; iter < 20; iter++) {
+    final uri = Uri.parse(
+      'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=1000&endTime=$endCursor',
+    );
+    final res = await http.get(uri, headers: _kUa);
+    if (res.statusCode != 200) {
+      throw Exception('HTTP ${res.statusCode}');
+    }
+    final decoded = jsonDecode(res.body) as List<dynamic>;
+    if (decoded.isEmpty) break;
+    for (final row in decoded) {
+      if (row is! List || row.length < 5) continue;
+      final o = (row[0] as num).toInt();
+      if (o < cutoffMs) continue;
+      byTs[o] = (row[4] as num).toDouble();
+    }
+    final oldest = (decoded.first as List)[0] as num;
+    final oldestMs = oldest.toInt();
+    if (oldestMs <= cutoffMs) break;
+    if (decoded.length < 1000) break;
+    endCursor = oldestMs - 1;
+  }
+  if (byTs.isEmpty) throw Exception('empty klines (paginated)');
+  final keys = byTs.keys.toList()..sort();
+  var out = <BtcPricePoint>[
+    for (final k in keys)
+      BtcPricePoint(
+        time: DateTime.fromMillisecondsSinceEpoch(k, isUtc: true),
+        usd: byTs[k]!,
+      ),
+  ];
+  if (out.length > maxDays) {
+    out = out.sublist(out.length - maxDays);
+  }
+  return out;
+}
+
 Future<List<BtcPricePoint>> _fetchCoinGecko(int days) async {
   final uri = Uri.parse(
     'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=$days',
@@ -109,9 +155,39 @@ Future<List<BtcPricePoint>> _fetchCoinGecko(int days) async {
   return out;
 }
 
-Future<List<BtcPricePoint>> _fetchCryptoCompare(int days) async {
+Future<List<BtcPricePoint>> _fetchCoinGeckoLong(int maxDays) async {
   final uri = Uri.parse(
-    'https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=$days',
+    'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=max',
+  );
+  final res = await http.get(uri, headers: _kUa);
+  if (res.statusCode != 200) {
+    throw Exception('HTTP ${res.statusCode}');
+  }
+  final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+  final prices = decoded['prices'] as List<dynamic>? ?? [];
+  final out = <BtcPricePoint>[];
+  for (final row in prices) {
+    if (row is! List || row.length < 2) continue;
+    final ms = (row[0] as num).toInt();
+    final p = (row[1] as num).toDouble();
+    out.add(
+      BtcPricePoint(
+        time: DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true),
+        usd: p,
+      ),
+    );
+  }
+  if (out.isEmpty) throw Exception('empty prices (max)');
+  if (out.length > maxDays) {
+    return out.sublist(out.length - maxDays);
+  }
+  return out;
+}
+
+Future<List<BtcPricePoint>> _fetchCryptoCompare(int days) async {
+  final lim = days > 2000 ? 2000 : days;
+  final uri = Uri.parse(
+    'https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=$lim',
   );
   final res = await http.get(uri, headers: _kUa);
   if (res.statusCode != 200) {
@@ -126,9 +202,10 @@ Future<List<BtcPricePoint>> _fetchCryptoCompare(int days) async {
   final rows = dataWrap['Data'] as List<dynamic>? ?? [];
   final out = <BtcPricePoint>[];
   for (final row in rows) {
-    if (row is! Map<String, dynamic>) continue;
-    final t = row['time'];
-    final close = row['close'];
+    if (row is! Map) continue;
+    final m = Map<String, dynamic>.from(row);
+    final t = m['time'];
+    final close = m['close'];
     if (t is! num || close is! num) continue;
     out.add(
       BtcPricePoint(
