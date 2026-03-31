@@ -121,6 +121,46 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 28),
         Card(
           margin: EdgeInsets.zero,
+          color: AppColors.surface.withValues(alpha: 0.65),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: AppColors.amber.withValues(alpha: 0.22)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.shield_outlined, size: 20, color: AppColors.amberLight.withValues(alpha: 0.95)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Why this matters',
+                      style: t.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.text,
+                            fontSize: 16,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  AppStrings.whyMatters,
+                  style: TextStyle(
+                    color: AppColors.muted.withValues(alpha: 0.96),
+                    height: 1.55,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          margin: EdgeInsets.zero,
           clipBehavior: Clip.antiAlias,
           child: Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -180,46 +220,6 @@ class HomeScreen extends StatelessWidget {
                     ),
                   );
                 }),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          margin: EdgeInsets.zero,
-          color: AppColors.surface.withValues(alpha: 0.65),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: AppColors.amber.withValues(alpha: 0.22)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.shield_outlined, size: 20, color: AppColors.amberLight.withValues(alpha: 0.95)),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Why this matters',
-                      style: t.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.text,
-                            fontSize: 16,
-                          ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  AppStrings.whyMatters,
-                  style: TextStyle(
-                    color: AppColors.muted.withValues(alpha: 0.96),
-                    height: 1.55,
-                    fontSize: 14,
-                  ),
-                ),
               ],
             ),
           ),

@@ -26,11 +26,11 @@ class _MainShellState extends State<MainShell> {
         index: _index,
         children: [
           HomeScreen(
-            onOpenSimulator: () => _go(1),
-            onOpenQuick: () => _go(2),
+            onOpenSimulator: () => _go(2),
+            onOpenQuick: () => _go(1),
           ),
-          const SimulatorScreen(),
           const QuickCheckScreen(),
+          const SimulatorScreen(),
           const NewsScreen(),
           const TimelineScreen(),
           const GlossaryScreen(),
@@ -46,14 +46,14 @@ class _MainShellState extends State<MainShell> {
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.area_chart_outlined),
-            selectedIcon: Icon(Icons.area_chart),
-            label: 'Full risk simulator',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.bolt_outlined),
             selectedIcon: Icon(Icons.bolt),
             label: 'Quick',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.area_chart_outlined),
+            selectedIcon: Icon(Icons.area_chart),
+            label: 'Full risk simulator',
           ),
           NavigationDestination(
             icon: Icon(Icons.newspaper_outlined),

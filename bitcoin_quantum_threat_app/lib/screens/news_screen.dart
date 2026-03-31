@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
-import 'package:webfeed/webfeed.dart';
 
 import '../content/news_visual_context.dart';
 import '../engine/news_curves.dart';
@@ -129,11 +128,8 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   Future<_NewsScreenData> _loadScreenData() async {
-    final feedsFuture = _loadFeeds();
-    final polyFuture = _fetchPolymarket();
-    final bundle = await feedsFuture;
-    final poly = await polyFuture;
-    return _NewsScreenData(bundle: bundle, polymarket: poly.snap, polymarketError: poly.err);
+    final poly = await _fetchPolymarket();
+    return _NewsScreenData(polymarket: poly.snap, polymarketError: poly.err);
   }
 
   Future<({_PolymarketSnapshot? snap, String? err})> _fetchPolymarket() async {
@@ -180,58 +176,6 @@ class _NewsScreenState extends State<NewsScreen> {
         );
       }
     }
-  }
-
-  Future<_NewsBundle> _loadFeeds() async {
-    final feeds = <String, List<_NewsItem>>{};
-    final errors = <String, String?>{};
-    const urls = [
-      ('https://cointelegraph.com/rss', 'Crypto & Blockchain'),
-      ('https://bitcoinmagazine.com/.feed', 'Bitcoin'),
-    ];
-    for (final u in urls) {
-      errors[u.$2] = null;
-      try {
-        final res = await http.get(
-          Uri.parse(u.$1),
-          headers: {'User-Agent': 'Mozilla/5.0 (compatible; BQTT/1.0)'},
-        );
-        if (res.statusCode != 200) {
-          feeds[u.$2] = [];
-          errors[u.$2] = 'HTTP ${res.statusCode}';
-          continue;
-        }
-        final rss = RssFeed.parse(res.body);
-        final items = <_NewsItem>[];
-        for (final item in rss.items ?? []) {
-          if (items.length >= 4) break;
-          var raw = item.description ?? '';
-          final encoded = item.content?.value;
-          if (encoded != null && encoded.trim().length > raw.length) {
-            raw = encoded;
-          }
-          final link = item.link?.trim() ?? '';
-          items.add(_NewsItem(
-            title: item.title ?? '',
-            summary: _stripHtml(raw),
-            pub: item.pubDate?.toIso8601String().substring(0, 10) ?? '',
-            link: link.isNotEmpty ? link : null,
-          ));
-        }
-        feeds[u.$2] = items;
-      } catch (e) {
-        feeds[u.$2] = [];
-        errors[u.$2] = e.toString();
-      }
-    }
-    return _NewsBundle(feeds, errors);
-  }
-
-  static String _stripHtml(String s, {int maxLen = 2800}) {
-    var t = s.replaceAll(RegExp(r'<[^>]*>'), ' ');
-    t = t.replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (t.length > maxLen) t = '${t.substring(0, maxLen - 3)}...';
-    return t;
   }
 
   Future<void> _openUrl(String url) async {
@@ -607,7 +551,7 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Longer background tied to the overview images (not live RSS).',
+          'Longer background tied to the overview images.',
           style: TextStyle(color: AppColors.muted.withValues(alpha: 0.88), fontSize: 12, height: 1.45),
         ),
         const SizedBox(height: 16),
@@ -640,58 +584,6 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
-  Widget _headlineCard(_NewsItem item) {
-    final link = item.link;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: link != null ? () => _openUrl(link) : null,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, height: 1.25)),
-                  ),
-                  if (link != null)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: Icon(Icons.open_in_new, size: 16, color: AppColors.amber),
-                    ),
-                ],
-              ),
-              if (item.pub.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(item.pub, style: const TextStyle(fontSize: 11, color: AppColors.muted)),
-              ],
-              if (item.summary.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                  decoration: BoxDecoration(
-                    border: Border(left: BorderSide(color: AppColors.amber.withValues(alpha: 0.45), width: 3)),
-                    color: AppColors.surface.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    item.summary,
-                    style: const TextStyle(color: AppColors.muted, fontSize: 13, height: 1.45),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -706,7 +598,6 @@ class _NewsScreenState extends State<NewsScreen> {
             return Center(child: Text('Error: ${snap.error}', style: const TextStyle(color: AppColors.risk)));
           }
           final data = snap.data!;
-          final bundle = data.bundle;
           return RefreshIndicator(
             color: AppColors.amber,
             onRefresh: () async {
@@ -720,47 +611,22 @@ class _NewsScreenState extends State<NewsScreen> {
                   'Polymarket',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.text),
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  'Polymarket quantum sentiment',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    height: 1.3,
+                    color: AppColors.amber.withValues(alpha: 0.92),
+                    letterSpacing: 0.15,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 _predictionMarketCard(data.polymarket, data.polymarketError),
                 const SizedBox(height: 24),
                 const Divider(height: 1),
                 const SizedBox(height: 20),
-                const Text(
-                  'Bitcoin news',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.text),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Recent headlines & summaries',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.amber),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'RSS excerpts; pull to refresh. Tap opens the article.',
-                  style: TextStyle(color: AppColors.muted.withValues(alpha: 0.88), fontSize: 12, height: 1.45),
-                ),
-                const SizedBox(height: 14),
-                for (final e in bundle.feeds.entries) ...[
-                  Text(e.key, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.amber)),
-                  const SizedBox(height: 8),
-                  if (bundle.errors[e.key] != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        'Unable to load feed: ${bundle.errors[e.key]}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.risk, height: 1.35),
-                      ),
-                    )
-                  else if (e.value.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 12),
-                      child: Text('No items returned for this feed.', style: TextStyle(color: AppColors.muted)),
-                    )
-                  else
-                    for (final item in e.value) _headlineCard(item),
-                  const SizedBox(height: 12),
-                ],
-                const SizedBox(height: 8),
                 _visualContextSection(),
                 const SizedBox(height: 16),
                 const Divider(height: 1),
@@ -817,25 +683,9 @@ class _PolymarketSnapshot {
 
 class _NewsScreenData {
   _NewsScreenData({
-    required this.bundle,
     this.polymarket,
     this.polymarketError,
   });
-  final _NewsBundle bundle;
   final _PolymarketSnapshot? polymarket;
   final String? polymarketError;
-}
-
-class _NewsItem {
-  _NewsItem({required this.title, required this.summary, required this.pub, this.link});
-  final String title;
-  final String summary;
-  final String pub;
-  final String? link;
-}
-
-class _NewsBundle {
-  _NewsBundle(this.feeds, this.errors);
-  final Map<String, List<_NewsItem>> feeds;
-  final Map<String, String?> errors;
 }

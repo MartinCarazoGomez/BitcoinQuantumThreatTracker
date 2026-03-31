@@ -34,7 +34,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   fl_chart: ^0.70.2
   http: ^1.2.2
-  webfeed: ^0.7.0
   url_launcher: ^6.3.1
   share_plus: ^10.1.4
 
@@ -64,7 +63,6 @@ flutter:
     # Bundled Polymarket Gamma JSON — web cannot call the API (CORS); CI refreshes before build.
     - assets/data/polymarket_snapshot.json
     - assets/images/overview_nist.jpg
-    - assets/images/overview_bitcoin.png
     - assets/images/overview_ibm_quantum.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see

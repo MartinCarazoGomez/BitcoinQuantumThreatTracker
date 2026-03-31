@@ -3,7 +3,7 @@
 class AppStrings {
   /// One line under the app title on Home (aligned with Streamlit landing hero).
   static const homeTagline =
-      'How close is quantum to breaking Bitcoin—and how fast can the network migrate?';
+      'How close is quantum to breaking Bitcoin, and how fast can the network migrate?';
 
   static const whyMatters =
       'Bitcoin uses ECDSA (and Schnorr) signatures tied to your private keys—quantum computers could eventually break that public-key math. '

@@ -23,16 +23,6 @@ const kNewsVisualStories = <NewsVisualStory>[
     ],
   ),
   NewsVisualStory(
-    assetPath: 'assets/images/overview_bitcoin.png',
-    title: 'Bitcoin: where quantum risk actually sits',
-    paragraphs: [
-      'Bitcoin’s mining puzzle is built on SHA-256 preimage search. Quantum algorithms like Grover provide at most a quadratic speedup for unstructured search, which shifts security margins but does not flip the network overnight in the way Shor’s algorithm threatens public-key schemes. The headline quantum issue for holders is therefore not “SHA-256 is broken,” it is **signatures**: today’s spends reveal ECDSA or Schnorr public keys tied to those coins, and a future machine that runs Shor efficiently could derive private keys from those public keys for the affected outputs.',
-      'Taproot (activated November 2021) improves privacy and efficiency—Schnorr signatures, MAST-style script hiding, and better batch verification—but it does not remove the need for a post-quantum signature migration path. It changes **how** keys and scripts appear on chain, not the fundamental fact that classical elliptic-curve assumptions underpin authorization until consensus adopts new primitives.',
-      'Risk accumulates where users reuse addresses, leave coins in old script types, or defer moving value while signatures pile up on-chain. Cold storage that has **never** published a public key in a spend is in a different exposure class than hot wallets that sign frequently. That nuance is why aggregate “quantum threat” numbers are scenario-dependent: the simulator’s **vulnerable share** slider exists to express how much value might sit under keys that are already exposed or easy to target.',
-      'Engineering proposals for Bitcoin-level migration—new output types, hybrid classical/post-quantum schemes, and social processes for upgrade—are active research and debate, not a single shipped knob. The photos and headlines you see in the feeds sit in that context: they are **news** about regulation, markets, and technology, while this app’s charts express **structured uncertainty** about timing. Read them together: headlines for what happened this week, curves for what might happen across decades.',
-    ],
-  ),
-  NewsVisualStory(
     assetPath: 'assets/images/overview_ibm_quantum.jpg',
     title: 'IBM-style hardware milestones vs breaking ECDSA',
     paragraphs: [
