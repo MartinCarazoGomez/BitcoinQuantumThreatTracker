@@ -305,7 +305,7 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Binance · BTCUSDT · 1d close · UTC',
+                  'Daily close · UTC (Binance, else CoinGecko / CryptoCompare)',
                   style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.88)),
                 ),
                 const SizedBox(height: 8),

@@ -896,7 +896,7 @@ def render_btc_year_chart():
         unsafe_allow_html=True,
     )
     st.caption(
-        "One daily candle close per day from Binance public API (BTCUSDT). "
+        "Daily closes from public APIs (Binance first; CoinGecko / CryptoCompare if needed). "
         "Same series as GET /api/btc/price-history?days=365."
     )
     try:
