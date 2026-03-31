@@ -225,10 +225,13 @@ class _BtcYearPriceCard extends StatefulWidget {
 class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
   late Future<List<BtcPricePoint>> _future;
 
+  /// Visible window in days (default 12 months).
+  int _windowDays = kBtcPriceDefaultWindowDays;
+
   @override
   void initState() {
     super.initState();
-    _future = fetchBtcUsdHistory(days: 365);
+    _future = fetchBtcUsdHistory(days: kBtcPriceMaxFetchDays);
   }
 
   static String _fmtUsd(double v) {
@@ -266,13 +269,17 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
                 ),
               );
             }
-            final points = snap.data!;
-            if (points.isEmpty) {
+            final all = snap.data!;
+            if (all.isEmpty) {
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
                 child: Text('No price data.', style: TextStyle(color: AppColors.muted)),
               );
             }
+            final maxD = all.length;
+            final minDays = maxD >= kBtcPriceMinWindowDays ? kBtcPriceMinWindowDays : 1;
+            final w = min(_windowDays, maxD).clamp(minDays, maxD).toInt();
+            final points = all.sublist(all.length - w);
             final ys = points.map((e) => e.usd).toList();
             var lo = ys.reduce(min);
             var hi = ys.reduce(max);
@@ -295,17 +302,17 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
                   children: [
                     Icon(Icons.currency_bitcoin, size: 20, color: AppColors.amber.withValues(alpha: 0.95)),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'BTC/USDT — last 12 months (1d)',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.text),
+                        'BTC price (daily close)',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.text),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Daily close · UTC (Binance, else CoinGecko / CryptoCompare)',
+                  'Last $w days · UTC · Binance / CoinGecko / CryptoCompare',
                   style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.88)),
                 ),
                 const SizedBox(height: 8),
@@ -314,7 +321,7 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
                   child: LineChart(
                     LineChartData(
                       minX: 0,
-                      maxX: (n - 1).toDouble(),
+                      maxX: n > 1 ? (n - 1).toDouble() : 1,
                       minY: lo,
                       maxY: hi,
                       clipData: const FlClipData.all(),
@@ -349,9 +356,9 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
                             reservedSize: 26,
                             interval: 1,
                             getTitlesWidget: (v, meta) {
-                              final i = v.round().clamp(0, n - 1);
-                              final mid = (n - 1) ~/ 2;
-                              final show = i == 0 || i == n - 1 || i == mid;
+                              final i = v.round().clamp(0, n > 0 ? n - 1 : 0);
+                              final mid = n > 1 ? (n - 1) ~/ 2 : 0;
+                              final show = n <= 1 || i == 0 || i == n - 1 || i == mid;
                               if (!show) return const SizedBox.shrink();
                               final d = points[i].time.toUtc();
                               final label = '${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
@@ -392,7 +399,7 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
                           getTooltipItems: (touchedSpots) {
                             return List<LineTooltipItem?>.generate(touchedSpots.length, (j) {
                               final t = touchedSpots[j];
-                              final xi = t.x.round().clamp(0, n - 1);
+                              final xi = t.x.round().clamp(0, n > 0 ? n - 1 : 0);
                               final date = points[xi].time.toUtc().toString().split(' ').first;
                               return LineTooltipItem(
                                 '$date\n${_fmtUsd(t.y)}',
@@ -403,6 +410,49 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
                         ),
                       ),
                     ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      'Full history',
+                      style: TextStyle(fontSize: 10, color: AppColors.muted.withValues(alpha: 0.75)),
+                    ),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 3,
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
+                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                        ),
+                        child: Slider(
+                          // Left = most days loaded; right = ~1 month (inverted mapping).
+                          value: (maxD + minDays - w).toDouble(),
+                          min: minDays.toDouble(),
+                          max: maxD.toDouble(),
+                          divisions: maxD > minDays ? (maxD - minDays).clamp(1, 200) : null,
+                          label: '$w d',
+                          onChanged: maxD <= minDays
+                              ? null
+                              : (v) {
+                                  setState(() => _windowDays = maxD + minDays - v.round());
+                                },
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '~1 mo',
+                      style: TextStyle(fontSize: 10, color: AppColors.muted.withValues(alpha: 0.75)),
+                    ),
+                  ],
+                ),
+                Center(
+                  child: Text(
+                    maxD <= minDays
+                        ? '$maxD day${maxD == 1 ? '' : 's'} loaded'
+                        : '$w days shown (up to $maxD days loaded)',
+                    style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.9)),
                   ),
                 ),
               ],

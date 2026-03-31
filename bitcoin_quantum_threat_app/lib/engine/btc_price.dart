@@ -15,6 +15,15 @@ const _kUa = {
   'Accept': 'application/json',
 };
 
+/// Binance klines max per request; also caps our fetch size.
+const int kBtcPriceMaxFetchDays = 1000;
+
+/// Default visible window (~12 months).
+const int kBtcPriceDefaultWindowDays = 365;
+
+/// Minimum window (~1 month), when enough data exists.
+const int kBtcPriceMinWindowDays = 30;
+
 /// Daily BTC price history for the last [days] days.
 ///
 /// Tries **Binance** `1d` klines first (best: explicit daily candles). If that fails

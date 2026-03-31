@@ -890,30 +890,47 @@ def render_bottom_tabbar():
 
 
 def render_btc_year_chart():
-    """Plot daily BTC closes for the trailing year (Binance ``1d`` klines)."""
+    """Plot daily BTC closes; slider selects window from ~1 month up to full fetched history."""
     st.markdown(
-        '<div class="landing-section-title" style="margin-top:0.75rem;">BTC/USDT — last 12 months (1d)</div>',
+        '<div class="landing-section-title" style="margin-top:0.75rem;">BTC price (daily close)</div>',
         unsafe_allow_html=True,
     )
     st.caption(
         "Daily closes from public APIs (Binance first; CoinGecko / CryptoCompare if needed). "
-        "Same series as GET /api/btc/price-history?days=365."
+        "Use the slider below the chart to show fewer days (≈1 month) or more (up to ~1000 days fetched)."
     )
     try:
         from btc_price import fetch_btc_usd_prices
 
-        series = fetch_btc_usd_prices(365)
-        if not series:
+        series_full = fetch_btc_usd_prices(1000)
+        if not series_full:
             st.warning("No price samples returned.")
             return
-        xs = [t for t, _ in series]
-        ys = [p for _, p in series]
+        max_days = len(series_full)
+        min_days = 30 if max_days >= 30 else 1
+        # Slider position: left = full history (high w), right = ~1 month (low w). pos + w = max_days + min_days.
+        if "btc_slider_pos" not in st.session_state:
+            default_w = min(365, max_days)
+            st.session_state["btc_slider_pos"] = max_days + min_days - default_w
+        pos = int(st.session_state["btc_slider_pos"])
+        pos = min(max(pos, min_days), max_days)
+        if pos != int(st.session_state["btc_slider_pos"]):
+            st.session_state["btc_slider_pos"] = pos
+        w = max_days + min_days - pos
+        w = min(max(w, min_days), max_days)
+
+        sub = series_full[-w:]
+        xs = [t for t, _ in sub]
+        ys = [p for _, p in sub]
         fig = go.Figure(
             layout=go.Layout(
                 paper_bgcolor="#0a0f1a",
                 plot_bgcolor="#0a0f1a",
                 font=dict(color="#94a3b8"),
-                title=dict(text="BTC/USDT daily close (trailing year)", font=dict(color="#f1f5f9", size=14)),
+                title=dict(
+                    text=f"BTC/USDT daily close — last {w} days ({max_days} days loaded)",
+                    font=dict(color="#f1f5f9", size=14),
+                ),
                 xaxis=dict(
                     title="Date (UTC)",
                     gridcolor="rgba(71,85,105,0.3)",
@@ -942,6 +959,13 @@ def render_btc_year_chart():
             fig,
             use_container_width=True,
             config=dict(displayModeBar=True, displaylogo=False),
+        )
+        st.slider(
+            "Window: full history ← → ~1 month",
+            min_value=min_days,
+            max_value=max_days,
+            key="btc_slider_pos",
+            help="Left shows all loaded days; right zooms to about one month. Default is 12 months in the middle.",
         )
     except Exception as ex:
         st.caption(f"Could not load BTC price: {ex}")
