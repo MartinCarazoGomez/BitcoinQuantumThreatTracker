@@ -28,8 +28,9 @@ class TimelineScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Historical rows follow documented announcements and standards dates. '
-            'The last row is only for this simulator—not a real-world prediction.',
+            'Earlier rows are documented hardware and standards dates. '
+            'Forward-looking policy and roadmap milestones (2030–2035) follow FNCE313 presentation materials. '
+            'The “simulator horizon” row is in-app only—not a forecast.',
             style: TextStyle(color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
           ),
           const SizedBox(height: 16),

@@ -262,7 +262,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
               ),
             ],
             _slider('Quantum steepness', 'quantum_steepness', 0.15, 0.80),
-            _slider('Quantum break year (50%)', 'break_year', 2032, 2050, isInt: true),
+            _slider('Quantum break year (50%)', 'break_year', 2028, 2050, isInt: true),
             _slider('Migration start year', 'migration_start', 2026, 2050, isInt: true),
             _slider('Migration speed', 'migration_speed', 0.15, 0.90),
             _slider('Vulnerable share', 'vulnerable_share', 0.20, 1.00),

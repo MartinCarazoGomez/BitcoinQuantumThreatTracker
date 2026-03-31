@@ -637,11 +637,11 @@ def logistic_curve(x, midpoint, steepness):
 
 
 def scenario_defaults(name):
-    """Preset assumptions for each scenario."""
+    """Preset assumptions for each scenario (Q-Day bands per FNCE313 deck)."""
     presets = {
         "Optimistic": {
             "quantum_steepness": 0.30,
-            "break_year": 2044,
+            "break_year": 2040,
             "migration_start": 2030,
             "migration_speed": 0.55,
             "vulnerable_share": 0.55,
@@ -649,7 +649,7 @@ def scenario_defaults(name):
         },
         "Moderate": {
             "quantum_steepness": 0.38,
-            "break_year": 2040,
+            "break_year": 2033,
             "migration_start": 2033,
             "migration_speed": 0.42,
             "vulnerable_share": 0.70,
@@ -657,7 +657,7 @@ def scenario_defaults(name):
         },
         "Pessimistic": {
             "quantum_steepness": 0.48,
-            "break_year": 2037,
+            "break_year": 2030,
             "migration_start": 2036,
             "migration_speed": 0.30,
             "vulnerable_share": 0.85,
@@ -833,7 +833,7 @@ def run_sensitivity_analysis(base_params, years, parameter_name, strategy):
     ranges = {
         "migration_start": np.arange(2028, 2041),
         "migration_speed": np.round(np.linspace(0.20, 0.80, 16), 2),
-        "break_year": np.arange(2034, 2048),
+        "break_year": np.arange(2028, 2048),
         "vulnerable_share": np.round(np.linspace(0.40, 0.95, 12), 2),
     }
 
@@ -1253,11 +1253,12 @@ def render_timeline():
     render_back_button()
     st.title("Timeline")
     st.markdown(
-        "Historical rows follow **documented** announcements and standards dates. "
-        "The last row is **only** for this simulator—not a real-world prediction."
+        "Earlier rows are documented hardware and standards dates. "
+        "Forward-looking policy and roadmap milestones (2030–2035) follow **FNCE313** presentation materials. "
+        "The simulator horizon row is **in-app only**—not a forecast."
     )
 
-    # Verified milestones (sources: Nature 2019; IBM/NIST press; Bitcoin consensus)
+    # Verified milestones (sources: Nature 2019; IBM/NIST press; Bitcoin consensus); policy rows from FNCE313 deck
     events = [
         (2019, "Google quantum supremacy (Sycamore)", "quantum", "~53-qubit processor; Nature, 23 Oct 2019"),
         (2021, "IBM Eagle processor", "quantum", "127-qubit chip publicly announced"),
@@ -1267,6 +1268,9 @@ def render_timeline():
         (2023, "IBM Condor / System Two", "quantum", "1121-qubit processor announced (Dec 2023)"),
         (2024, "NIST FIPS post-quantum standards", "crypto", "FIPS 203 (ML-KEM), 204 (ML-DSA), 205 (SLH-DSA); Aug 2024"),
         (2026, "This simulator’s horizon start", "model", "App default window begins—not a forecast"),
+        (2030, "NIST / NSA deprecation window (RSA & ECDSA)", "crypto", "Strategic policy milestone (FNCE313): transition away from RSA/ECDSA toward PQC."),
+        (2033, "IBM roadmap: 2,000+ logical qubits", "quantum", "Public hardware roadmap commitment—fault-tolerant scale relevant to cryptanalysis timelines."),
+        (2035, "Legacy crypto disallowed (global cutoff)", "crypto", "Strategic milestone (FNCE313): broader deprecation of legacy public-key schemes—timing varies by jurisdiction."),
     ]
     df = pd.DataFrame(events, columns=["Year", "Event", "Type", "Detail"])
     colors = {"quantum": "#38bdf8", "crypto": "#a78bfa", "bitcoin": "#4ade80", "model": "#f59e0b"}
@@ -1328,7 +1332,7 @@ def render_simulator():
         c1, c2, c3 = st.columns(3)
         with c1:
             params["quantum_steepness"] = st.slider("Quantum steepness", 0.15, 0.80, float(params["quantum_steepness"]), 0.01, help="Acceleration of quantum capability growth")
-            params["break_year"] = st.slider("Quantum break year (50%)", 2032, 2050, int(params["break_year"]), 1, help="Year quantum reaches 50% capability")
+            params["break_year"] = st.slider("Quantum break year (50%)", 2028, 2050, int(params["break_year"]), 1, help="Year quantum reaches 50% capability (presets: Optimistic 2040+, Moderate 2033+, Pessimistic ~2030)")
             params["migration_start"] = st.slider("Migration start year", 2026, 2050, int(params["migration_start"]), 1, help="Year migration reaches 50% midpoint")
         with c2:
             params["migration_speed"] = st.slider("Migration speed", 0.15, 0.90, float(params["migration_speed"]), 0.01)

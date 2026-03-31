@@ -22,12 +22,14 @@ Map<String, double> strategyEffects(String strategy) {
   }
 }
 
+/// Preset quantum midpoints align with FNCE313 deck Q-Day bands: Optimistic 2040+,
+/// Moderate 2033+, Pessimistic 2029–2031 (here: 2030 midpoint).
 Map<String, dynamic> scenarioDefaults(String name) {
   switch (name) {
     case 'Optimistic':
       return {
         'quantum_steepness': 0.30,
-        'break_year': 2044,
+        'break_year': 2040,
         'migration_start': 2030,
         'migration_speed': 0.55,
         'vulnerable_share': 0.55,
@@ -36,7 +38,7 @@ Map<String, dynamic> scenarioDefaults(String name) {
     case 'Pessimistic':
       return {
         'quantum_steepness': 0.48,
-        'break_year': 2037,
+        'break_year': 2030,
         'migration_start': 2036,
         'migration_speed': 0.30,
         'vulnerable_share': 0.85,
@@ -46,7 +48,7 @@ Map<String, dynamic> scenarioDefaults(String name) {
     default:
       return {
         'quantum_steepness': 0.38,
-        'break_year': 2040,
+        'break_year': 2033,
         'migration_start': 2033,
         'migration_speed': 0.42,
         'vulnerable_share': 0.70,
@@ -247,7 +249,7 @@ List<ScenarioRow> runScenarioComparison(List<int> years, String strategy) {
   final ranges = <String, List<double>>{
     'migration_start': [for (var y = 2028; y <= 2040; y++) y.toDouble()],
     'migration_speed': _linspace(0.20, 0.80, 16),
-    'break_year': [for (var y = 2034; y <= 2047; y++) y.toDouble()],
+    'break_year': [for (var y = 2028; y <= 2047; y++) y.toDouble()],
     'vulnerable_share': _linspace(0.40, 0.95, 12),
   };
   final xVals = ranges[parameterName]!;

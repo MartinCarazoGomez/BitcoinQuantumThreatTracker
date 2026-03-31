@@ -60,12 +60,20 @@ class GlossaryScreen extends StatelessWidget {
       'Bitcoin’s modern script and signature tooling (BIP 340 Schnorr, Taproot spending paths). Still classical curves—quantum threat models still apply; any PQ upgrade would need a new design layer.',
     ),
     (
+      'BIP-360',
+      'Proposed Bitcoin improvement: Pay-to-Merkle-Root (P2MR) as a new address/spend path. Aims to keep public keys hidden behind a Merkle commitment until spend—reducing harvest-now exposure—and to accommodate larger post-quantum signatures via a soft-fork path. Status and timing follow community review (see resources).',
+    ),
+    (
+      'Pay-to-Merkle Root (P2MR)',
+      'Address pattern paired with BIP-360: the locking condition references a Merkle root instead of revealing the full public key up front, limiting on-chain key exposure compared with traditional spends. Often discussed together with hash-based signatures such as SPHINCS+ (SLH-DSA).',
+    ),
+    (
       'Soft fork vs hard fork',
       'Soft fork: tightened rules, old nodes still see blocks as valid if they follow old rules. Hard fork: incompatible rule change. Post-quantum Bitcoin changes are often debated in terms of coordination and backward compatibility.',
     ),
     (
       'Quantum break year',
-      'Year when quantum computers are estimated to reach ~50% capability to break current crypto.',
+      'Year when this model’s quantum-capability curve reaches 50% (logistic midpoint). Scenario presets follow FNCE313 Q-Day bands: Optimistic 2040+, Moderate 2033+, Pessimistic 2029–2031 (2030 midpoint).',
     ),
     (
       'Migration 50%',
@@ -79,6 +87,7 @@ class GlossaryScreen extends StatelessWidget {
     ('Bitcoin BIPs', 'https://github.com/bitcoin/bips'),
     ('Bitcoin Optech', 'https://bitcoinops.org/'),
     ('Bitcoin Wiki — Quantum computing', 'https://en.bitcoin.it/wiki/Quantum_computing_and_Bitcoin'),
+    ('BIP-360 / P2MR', 'https://bip360.org/'),
   ];
 
   @override
