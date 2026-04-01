@@ -1275,25 +1275,6 @@ def render_news():
 
     st.divider()
 
-    # Chart: Quantum computing milestones (qubit progress)
-    st.subheader("Quantum computing progress")
-    fig_qc = go.Figure(layout=go.Layout(
-        paper_bgcolor="#0a0f1a", plot_bgcolor="#0a0f1a", font=dict(color="#94a3b8"),
-        title=dict(text="Key quantum computing milestones (log scale)", font=dict(color="#f1f5f9", size=14)),
-        xaxis=dict(title="Year", gridcolor="rgba(71,85,105,0.3)"),
-        yaxis=dict(title="Qubits (log scale)", type="log", gridcolor="rgba(71,85,105,0.3)"),
-        height=320, margin=dict(t=40, b=40, l=50, r=20),
-    ))
-    fig_qc.add_trace(go.Scatter(x=[2019], y=[53], mode="markers+text", marker=dict(size=14, color="#38bdf8"), text="Sycamore", textposition="top center", name="Google"))
-    fig_qc.add_trace(go.Scatter(x=[2021], y=[127], mode="markers+text", marker=dict(size=14, color="#4ade80"), text="Eagle", textposition="top center", name="IBM"))
-    fig_qc.add_trace(go.Scatter(x=[2022], y=[433], mode="markers+text", marker=dict(size=14, color="#22d3ee"), text="Osprey", textposition="top center", name="IBM"))
-    fig_qc.add_trace(go.Scatter(x=[2023], y=[1121], mode="markers+text", marker=dict(size=14, color="#a78bfa"), text="Condor", textposition="top center", name="IBM"))
-    st.plotly_chart(fig_qc, use_container_width=True)
-    st.caption(
-        "Documented IBM/Google hardware announcements (physical qubit counts, not logical qubit counts). "
-        "Breaking ECDSA in practice may require large-scale fault-tolerant machines—timing remains uncertain."
-    )
-
     # Chart: The race — quantum vs migration
     st.subheader("The race: quantum threat vs migration")
     fig_race = go.Figure(layout=go.Layout(

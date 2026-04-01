@@ -254,6 +254,32 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
     return '\$${v.toStringAsFixed(0)}';
   }
 
+  /// Up to five evenly spaced day indices for the x-axis (0 … n−1).
+  static List<int> _btcXAxisTickIndices(int n) {
+    if (n <= 0) return [];
+    if (n == 1) return [0];
+    final last = n - 1;
+    final raw = <int>[
+      0,
+      (last * 0.25).round(),
+      (last * 0.5).round(),
+      (last * 0.75).round(),
+      last,
+    ];
+    final seen = <int>{};
+    final out = <int>[];
+    for (final x in raw) {
+      final c = x.clamp(0, last);
+      if (seen.add(c)) out.add(c);
+    }
+    return out;
+  }
+
+  static String _fmtBtcAxisDateUtc(DateTime d) {
+    final u = d.toUtc();
+    return '${u.year}-${u.month.toString().padLeft(2, '0')}-${u.day.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -368,22 +394,26 @@ class _BtcYearPriceCardState extends State<_BtcYearPriceCard> {
                           ),
                         ),
                         bottomTitles: AxisTitles(
+                          axisNameWidget: Text(
+                            'Year',
+                            style: TextStyle(fontSize: 9, color: AppColors.muted.withValues(alpha: 0.85)),
+                          ),
+                          axisNameSize: 14,
                           sideTitles: SideTitles(
                             showTitles: true,
-                            reservedSize: 26,
+                            reservedSize: 30,
                             interval: 1,
                             getTitlesWidget: (v, meta) {
                               final i = v.round().clamp(0, n > 0 ? n - 1 : 0);
-                              final mid = n > 1 ? (n - 1) ~/ 2 : 0;
-                              final show = n <= 1 || i == 0 || i == n - 1 || i == mid;
-                              if (!show) return const SizedBox.shrink();
+                              final ticks = _btcXAxisTickIndices(n);
+                              if (!ticks.contains(i)) return const SizedBox.shrink();
                               final d = points[i].time.toUtc();
-                              final label = '${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
+                              final label = _fmtBtcAxisDateUtc(d);
                               return Padding(
-                                padding: const EdgeInsets.only(top: 6),
+                                padding: const EdgeInsets.only(top: 4),
                                 child: Text(
                                   label,
-                                  style: const TextStyle(fontSize: 9, color: AppColors.muted),
+                                  style: const TextStyle(fontSize: 8, color: AppColors.muted),
                                 ),
                               );
                             },

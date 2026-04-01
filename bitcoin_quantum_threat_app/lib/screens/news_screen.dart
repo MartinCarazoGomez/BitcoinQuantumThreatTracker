@@ -376,129 +376,6 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
-  static const _milestoneColors = [AppColors.quantum, AppColors.migration, Color(0xFF22d3ee), AppColors.accent];
-
-  Widget _milestoneChart() {
-    final pts = quantumMilestonePoints();
-    final spots = [for (var i = 0; i < pts.length; i++) FlSpot(pts[i].$1, pts[i].$2)];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Quantum computing progress', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-        const SizedBox(height: 4),
-        const Text(
-          'Key quantum computing milestones (log₁₀ of physical qubit count)',
-          style: TextStyle(fontSize: 12, color: AppColors.muted),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Public qubit announcements (log scale). Not a break timeline.',
-          style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.95), height: 1.4),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 240,
-          child: LineChart(
-            LineChartData(
-              minX: 2018,
-              maxX: 2024,
-              minY: 1,
-              maxY: 3.5,
-              gridData: FlGridData(show: true, getDrawingHorizontalLine: (v) => FlLine(color: Colors.white.withValues(alpha: 0.06))),
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(
-                  axisNameWidget: Text(
-                    'log₁₀(qubits)',
-                    style: TextStyle(fontSize: 9, color: AppColors.muted.withValues(alpha: 0.85)),
-                  ),
-                  axisNameSize: 18,
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 34,
-                    getTitlesWidget: (v, m) => Text(v.toStringAsFixed(1), style: const TextStyle(fontSize: 9, color: AppColors.muted)),
-                  ),
-                ),
-                bottomTitles: AxisTitles(
-                  axisNameWidget: Text('Year', style: TextStyle(fontSize: 9, color: AppColors.muted.withValues(alpha: 0.85))),
-                  axisNameSize: 14,
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 22,
-                    interval: 1,
-                    getTitlesWidget: (v, m) => Text(v.toInt().toString(), style: const TextStyle(fontSize: 9, color: AppColors.muted)),
-                  ),
-                ),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              ),
-              borderData: FlBorderData(show: true, border: Border.all(color: Colors.white.withValues(alpha: 0.06))),
-              lineBarsData: [
-                for (var i = 0; i < spots.length; i++)
-                  LineChartBarData(
-                    spots: [spots[i]],
-                    color: _milestoneColors[i % _milestoneColors.length],
-                    barWidth: 0,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (s0, s1, i2, c) => FlDotCirclePainter(
-                        radius: 10,
-                        color: _milestoneColors[i % _milestoneColors.length],
-                        strokeWidth: 2,
-                        strokeColor: Colors.white,
-                      ),
-                    ),
-                  ),
-              ],
-              lineTouchData: LineTouchData(
-                touchTooltipData: LineTouchTooltipData(
-                  getTooltipItems: (touched) {
-                    final out = <LineTooltipItem>[];
-                    for (final t in touched) {
-                      final bar = t.barIndex.clamp(0, kQuantumMilestones.length - 1);
-                      final m = kQuantumMilestones[bar];
-                      out.add(LineTooltipItem(
-                        '${m.chip} (${m.org})\n${m.qubits} qubits · log₁₀=${t.y.toStringAsFixed(2)}',
-                        const TextStyle(color: Colors.white, fontSize: 11, height: 1.25),
-                      ));
-                    }
-                    return out;
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (var i = 0; i < kQuantumMilestones.length; i++)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: AppColors.surface.withValues(alpha: 0.6),
-                  border: Border.all(color: _milestoneColors[i].withValues(alpha: 0.35)),
-                ),
-                child: Text(
-                  '${kQuantumMilestones[i].chip} · ${kQuantumMilestones[i].qubits} qubits (${kQuantumMilestones[i].year})',
-                  style: const TextStyle(fontSize: 11, color: AppColors.text),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Documented IBM/Google hardware announcements (physical qubit counts, not logical qubit counts). '
-          'Breaking ECDSA in practice may require large-scale fault-tolerant machines—timing remains uncertain.',
-          style: TextStyle(fontSize: 11, color: AppColors.muted, height: 1.4),
-        ),
-      ],
-    );
-  }
-
   Widget _raceChart() {
     final years = raceYears();
     final q = quantumRaceCurve(years);
@@ -766,8 +643,6 @@ class _NewsScreenState extends State<NewsScreen> {
                 const SizedBox(height: 16),
                 const Divider(height: 1),
                 const SizedBox(height: 20),
-                _milestoneChart(),
-                const SizedBox(height: 28),
                 _raceChart(),
               ],
             ),
