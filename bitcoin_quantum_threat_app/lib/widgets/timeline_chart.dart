@@ -58,6 +58,12 @@ class TimelineChart extends StatelessWidget {
     return false;
   }
 
+  /// Fine-tune vertical position for specific milestones (label only; dot unchanged).
+  static double _extraLabelDy(TimelineEvent e) {
+    if (e.year == 2023 && e.type == 'quantum') return -8;
+    return 0;
+  }
+
   /// NIST PQC sits just above the line; IBM Osprey just below (same year, fixed sides).
   static List<bool> _aboveFlags(List<TimelineEvent> sorted) {
     return List<bool>.generate(sorted.length, (i) {
@@ -271,7 +277,7 @@ class _EventAlongLine extends StatelessWidget {
     );
 
     final label = Transform.translate(
-      offset: Offset(0, labelNudgeY),
+      offset: Offset(0, labelNudgeY + TimelineChart._extraLabelDy(event)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
