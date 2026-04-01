@@ -1223,14 +1223,12 @@ def render_news():
     st.divider()
 
     st.subheader("Recent headlines")
-    st.caption("Live RSS excerpts; click through to the source site.")
     try:
         import feedparser
         import html as html_std
 
         feeds = [
             ("https://cointelegraph.com/rss", "Crypto & Blockchain"),
-            ("https://bitcoinmagazine.com/.feed", "Bitcoin"),
         ]
         for url, name in feeds:
             st.markdown(f"**{name}**")
@@ -1259,8 +1257,8 @@ def render_news():
                     if summary:
                         st.markdown(f"> {summary}")
                     st.markdown("")
-            except Exception as ex:
-                st.caption(f"Unable to load feed: {ex}")
+            except Exception:
+                pass
             st.markdown("")
     except ImportError:
         st.info("Install feedparser: `pip install feedparser` for live headlines.")

@@ -45,13 +45,6 @@ jobs:
             -o assets/data/polymarket_snapshot.json
           test -s assets/data/polymarket_snapshot.json
 
-      - name: Refresh BTC price fallback JSON (~2000 days)
-        shell: bash
-        working-directory: ${{ github.workspace }}
-        run: |
-          python scripts/export_btc_fallback_json.py
-          test -s bitcoin_quantum_threat_app/assets/data/btc_price_fallback_2000.json
-
       - name: Build web
         # Must match your repository name (path segment after github.io)
         run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"

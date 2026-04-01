@@ -63,7 +63,7 @@ flutter:
   assets:
     # Bundled Polymarket Gamma JSON — web cannot call the API (CORS); CI refreshes before build.
     - assets/data/polymarket_snapshot.json
-    # ~2000 days daily BTC — offline fallback when live APIs fail (CI refreshes).
+    # ~2000 days daily BTC — pinned offline fallback (committed; not regenerated in CI).
     - assets/data/btc_price_fallback_2000.json
     - assets/images/overview_nist.jpg
     - assets/images/overview_ibm_quantum.jpg

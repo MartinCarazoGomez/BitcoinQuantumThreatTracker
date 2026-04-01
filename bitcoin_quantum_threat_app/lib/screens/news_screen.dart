@@ -142,13 +142,10 @@ class _NewsScreenState extends State<NewsScreen> {
 
   Future<_NewsBundle> _loadFeeds() async {
     final feeds = <String, List<_NewsItem>>{};
-    final errors = <String, String?>{};
     const urls = [
       ('https://cointelegraph.com/rss', 'Crypto & Blockchain'),
-      ('https://bitcoinmagazine.com/.feed', 'Bitcoin'),
     ];
     for (final u in urls) {
-      errors[u.$2] = null;
       try {
         final res = await http.get(
           Uri.parse(u.$1),
@@ -156,7 +153,6 @@ class _NewsScreenState extends State<NewsScreen> {
         );
         if (res.statusCode != 200) {
           feeds[u.$2] = [];
-          errors[u.$2] = 'HTTP ${res.statusCode}';
           continue;
         }
         final rss = RssFeed.parse(_decodeRssResponseBody(res));
@@ -177,12 +173,11 @@ class _NewsScreenState extends State<NewsScreen> {
           ));
         }
         feeds[u.$2] = items;
-      } catch (e) {
+      } catch (_) {
         feeds[u.$2] = [];
-        errors[u.$2] = e.toString();
       }
     }
-    return _NewsBundle(feeds, errors);
+    return _NewsBundle(feeds);
   }
 
   /// RSS feeds are almost always UTF-8; [http.Response.body] uses ISO-8859-1 when `charset` is omitted.
@@ -757,30 +752,11 @@ class _NewsScreenState extends State<NewsScreen> {
                   'Recent headlines',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: AppColors.text),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'RSS excerpts; pull to refresh. Tap opens the article.',
-                  style: TextStyle(color: AppColors.muted.withValues(alpha: 0.88), fontSize: 12, height: 1.45),
-                ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 for (final e in bundle.feeds.entries) ...[
                   Text(e.key, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.amber)),
                   const SizedBox(height: 8),
-                  if (bundle.errors[e.key] != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        'Unable to load feed: ${bundle.errors[e.key]}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.risk, height: 1.35),
-                      ),
-                    )
-                  else if (e.value.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 12),
-                      child: Text('No items returned for this feed.', style: TextStyle(color: AppColors.muted)),
-                    )
-                  else
-                    for (final item in e.value) _headlineCard(item),
+                  for (final item in e.value) _headlineCard(item),
                   const SizedBox(height: 12),
                 ],
                 const SizedBox(height: 8),
@@ -860,7 +836,6 @@ class _NewsItem {
 }
 
 class _NewsBundle {
-  _NewsBundle(this.feeds, this.errors);
+  _NewsBundle(this.feeds);
   final Map<String, List<_NewsItem>> feeds;
-  final Map<String, String?> errors;
 }

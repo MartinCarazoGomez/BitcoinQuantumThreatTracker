@@ -25,7 +25,7 @@ _UA = {"User-Agent": "BitcoinQuantumThreatToolkit/1.0 (educational)"}
 # ~15 years of daily candles — max slider / fetch target (Binance needs multiple requests).
 BTC_HISTORY_MAX_DAYS = int(15 * 365.25)
 
-# Bundled JSON (Flutter asset + Streamlit fallback) — refresh `scripts/export_btc_fallback_json.py`.
+# Bundled JSON (Flutter asset + Streamlit fallback) — pinned in repo; optional regen via `scripts/export_btc_fallback_json.py`.
 _BTC_FALLBACK_JSON = Path(__file__).resolve().parent / "bitcoin_quantum_threat_app" / "assets" / "data" / "btc_price_fallback_2000.json"
 BUNDLED_BTC_MAX_DAYS = 2000
 

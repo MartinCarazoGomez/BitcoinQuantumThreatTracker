@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Write bundled BTC daily closes for Flutter offline fallback (~2000 days)."""
+"""
+Optional one-off: regenerate `btc_price_fallback_2000.json` from public APIs.
+
+The committed JSON in the repo is the canonical offline dataset for the app.
+It is not run in CI — replace the file only when you intentionally want a new snapshot.
+"""
 from __future__ import annotations
 
 import json
