@@ -14,12 +14,16 @@ class TimelineChart extends StatelessWidget {
   static const double _minYear = 2016;
   static const double _maxYear = 2040;
   /// Vertical space reserved under the plot for year labels (keep in sync with [_EventAlongLine]).
-  static const double _tickBand = 32;
+  static const double _tickBand = 24;
   /// Baseline position — chosen so above / below regions are similar height for readability.
-  static const double _lineY = 198;
-  static const double _stackHeight = 428;
-  static const double _labelW = 138;
-  static const double _padH = 10;
+  static const double _lineY = 149;
+  static const double _stackHeight = 321;
+  /// Narrow phones: taller plot + lower baseline so alternating bands fit.
+  static const double _narrowBreakpoint = 420;
+  static const double _lineYNarrow = 159;
+  static const double _stackHeightNarrow = 351;
+  static const double _labelW = 52;
+  static const double _padH = 8;
 
   static Color _colorFor(String type) {
     switch (type) {
@@ -47,7 +51,7 @@ class TimelineChart extends StatelessWidget {
       start--;
     }
     final indexInRun = i - start;
-    return (indexInRun * 12.0).clamp(0.0, 36.0);
+    return (indexInRun * 9.0).clamp(0.0, 27.0);
   }
 
   /// NIST PQC + IBM Osprey (both 2022): hug the baseline (handled in [_EventAlongLine]).
@@ -60,7 +64,7 @@ class TimelineChart extends StatelessWidget {
 
   /// Fine-tune vertical position for specific milestones (label only; dot unchanged).
   static double _extraLabelDy(TimelineEvent e) {
-    if (e.year == 2023 && e.type == 'quantum') return -8;
+    if (e.year == 2023 && e.type == 'quantum') return -6;
     return 0;
   }
 
@@ -77,22 +81,19 @@ class TimelineChart extends StatelessWidget {
   /// When label centers are close on the same side of the line, stagger text vertically.
   static List<double> _labelVerticalNudges(
     List<TimelineEvent> sorted,
-    double trackW,
-    double padH,
+    List<double> cx,
     List<bool> above,
+    double layoutWidth,
   ) {
     final n = sorted.length;
-    final cx = List<double>.generate(
-      n,
-      (i) => padH + _yearToX(sorted[i].year, trackW) + _sameYearNudge(sorted, i),
-    );
     final nudge = List<double>.filled(n, 0);
 
+    final isNarrow = layoutWidth < _narrowBreakpoint;
     /// ~label width 138 — stagger when centers are close enough that text can collide.
-    const proximity = 102.0;
-    /// Larger step = more vertical separation between stacked labels on the same side.
-    const step = 18.0;
-    const maxLayers = 5;
+    final proximity = isNarrow ? 84.0 : 76.0;
+    /// Keep narrow layouts visually consistent (avoid very high/low outliers).
+    final step = isNarrow ? 9.0 : 14.0;
+    final maxLayers = isNarrow ? 2 : 5;
 
     for (final side in [true, false]) {
       final idx = <int>[];
@@ -114,7 +115,86 @@ class TimelineChart extends StatelessWidget {
         nudge[i] = side ? (-depth[t] * step) : (depth[t] * step);
       }
     }
+
+    /// Always offset from the line by x-order on each side.
+    /// Pattern: near, near, far, far...
+    final band = isNarrow ? 8.0 : 6.0;
+    for (final side in [true, false]) {
+      final idx = <int>[];
+      for (var i = 0; i < n; i++) {
+        if (above[i] == side && !_compactLine(sorted[i])) idx.add(i);
+      }
+      idx.sort((a, b) => cx[a].compareTo(cx[b]));
+      for (var t = 0; t < idx.length; t++) {
+        final i = idx[t];
+        final far = (t % 4) >= 2;
+        if (!far) continue; // "near" keeps computed nudge
+        if (side) {
+          nudge[i] -= band; // above: farther = more negative (higher)
+        } else {
+          nudge[i] += band; // below: farther = more positive (lower)
+        }
+      }
+    }
+
+    // Hard cap keeps labels in consistent vertical bands.
+    final cap = isNarrow ? 20.0 : 24.0;
+    for (var i = 0; i < n; i++) {
+      if (_compactLine(sorted[i])) continue;
+      if (above[i]) {
+        nudge[i] = nudge[i].clamp(-cap, 0.0);
+      } else {
+        nudge[i] = nudge[i].clamp(0.0, cap);
+      }
+    }
+
     return nudge;
+  }
+
+  /// Enforces a minimum horizontal gap between points on the same side.
+  static List<double> _enforceMinDistanceBySide(
+    List<double> centers,
+    List<bool> above,
+    double left,
+    double right,
+    double minGap,
+  ) {
+    final out = List<double>.from(centers);
+    final available = (right - left).clamp(0.0, double.infinity);
+    if (available <= 0) return out;
+
+    for (final side in [true, false]) {
+      final idx = <int>[];
+      for (var i = 0; i < out.length; i++) {
+        if (above[i] == side) idx.add(i);
+      }
+      if (idx.length < 2) continue;
+      idx.sort((a, b) => out[a].compareTo(out[b]));
+
+      final maxGap = available / (idx.length - 1);
+      final gap = math.min(minGap, maxGap);
+
+      for (var t = 1; t < idx.length; t++) {
+        final prev = idx[t - 1];
+        final cur = idx[t];
+        final minX = out[prev] + gap;
+        if (out[cur] < minX) out[cur] = minX;
+      }
+
+      final overflow = out[idx.last] - right;
+      if (overflow > 0) {
+        for (final i in idx) {
+          out[i] -= overflow;
+        }
+      }
+      final underflow = left - out[idx.first];
+      if (underflow > 0) {
+        for (final i in idx) {
+          out[i] += underflow;
+        }
+      }
+    }
+    return out;
   }
 
   @override
@@ -130,8 +210,8 @@ class TimelineChart extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Wrap(
-          spacing: 10,
-          runSpacing: 6,
+          spacing: 8,
+          runSpacing: 5,
           children: [
             _LegendDot(color: AppColors.quantum, label: 'Quantum'),
             _LegendDot(color: AppColors.accent, label: 'Crypto'),
@@ -139,38 +219,59 @@ class TimelineChart extends StatelessWidget {
             _LegendDot(color: AppColors.amber, label: 'Model'),
           ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Single line · alternate above / below · ${_minYear.toInt()}–${_maxYear.toInt()}',
-          style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.88)),
+        const SizedBox(height: 6),
+        LayoutBuilder(
+          builder: (context, c) {
+            final narrow = c.maxWidth < _narrowBreakpoint;
+            return Text(
+              narrow
+                  ? 'Narrow layout: labels zig-zag higher/lower on each side · ${_minYear.toInt()}–${_maxYear.toInt()}'
+                  : 'Single line · alternate above / below · ${_minYear.toInt()}–${_maxYear.toInt()}',
+              style: TextStyle(fontSize: 8, color: AppColors.muted.withValues(alpha: 0.88)),
+            );
+          },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 9),
         Container(
           decoration: BoxDecoration(
             color: AppColors.surface.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
-          padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+          padding: const EdgeInsets.fromLTRB(9, 11, 9, 9),
           child: sorted.isEmpty
               ? Text(
                   'No events.',
-                  style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9)),
+                  style: TextStyle(fontSize: 8, color: AppColors.muted.withValues(alpha: 0.9)),
                 )
               : LayoutBuilder(
                   builder: (context, c) {
                     final trackW = (c.maxWidth - _padH * 2).clamp(120.0, double.infinity);
+                    final narrow = c.maxWidth < _narrowBreakpoint;
+                    final chartH = narrow ? _stackHeightNarrow : _stackHeight;
+                    final lineY = narrow ? _lineYNarrow : _lineY;
                     final aboveList = _aboveFlags(sorted);
-                    final nudges = _labelVerticalNudges(sorted, trackW, _padH, aboveList);
+                    final rawCx = List<double>.generate(
+                      sorted.length,
+                      (i) => _padH + _yearToX(sorted[i].year, trackW) + _sameYearNudge(sorted, i),
+                    );
+                    final pointCx = _enforceMinDistanceBySide(
+                      rawCx,
+                      aboveList,
+                      _padH,
+                      c.maxWidth - _padH,
+                      narrow ? 17.0 : 21.0,
+                    );
+                    final nudges = _labelVerticalNudges(sorted, pointCx, aboveList, c.maxWidth);
                     return SizedBox(
-                      height: _stackHeight,
+                      height: chartH,
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
                           Positioned(
                             left: _padH,
                             right: _padH,
-                            top: _lineY,
+                            top: lineY,
                             height: 2,
                             child: DecoratedBox(
                               decoration: BoxDecoration(
@@ -189,10 +290,10 @@ class TimelineChart extends StatelessWidget {
                             _EventAlongLine(
                               event: sorted[i],
                               color: _colorFor(sorted[i].type),
-                              cx: _padH +
-                                  _yearToX(sorted[i].year, trackW) +
-                                  _sameYearNudge(sorted, i),
+                              cx: pointCx[i],
                               trackWidth: c.maxWidth,
+                              lineY: lineY,
+                              chartHeight: chartH,
                               above: aboveList[i],
                               labelNudgeY: nudges[i],
                               compactToLine: _compactLine(sorted[i]),
@@ -229,13 +330,13 @@ class _YearTicks extends StatelessWidget {
       children: [
         for (final y in _ticks)
           Positioned(
-            left: TimelineChart._yearToX(y, trackW) - 16,
-            width: 32,
+            left: TimelineChart._yearToX(y, trackW) - 12,
+            width: 24,
             child: Text(
               '$y',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 8,
                 fontWeight: FontWeight.w600,
                 color: AppColors.muted.withValues(alpha: 0.85),
               ),
@@ -252,6 +353,8 @@ class _EventAlongLine extends StatelessWidget {
     required this.color,
     required this.cx,
     required this.trackWidth,
+    required this.lineY,
+    required this.chartHeight,
     required this.above,
     required this.labelNudgeY,
     required this.compactToLine,
@@ -261,13 +364,15 @@ class _EventAlongLine extends StatelessWidget {
   final Color color;
   final double cx;
   final double trackWidth;
+  final double lineY;
+  final double chartHeight;
   final bool above;
   /// Extra vertical offset for label text (dots stay on the baseline).
   final double labelNudgeY;
   /// Label + dot hug the baseline (2022 NIST above, 2022 Osprey below).
   final bool compactToLine;
 
-  static const double _dot = 13.0;
+  static const double _dot = 10.0;
 
   @override
   Widget build(BuildContext context) {
@@ -285,20 +390,20 @@ class _EventAlongLine extends StatelessWidget {
           Text(
             '${event.year}',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 7.5,
               fontWeight: FontWeight.w800,
               color: color,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             event.title,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 10.5,
-              height: 1.38,
+              fontSize: 7,
+              height: 1.28,
               fontWeight: FontWeight.w500,
               color: AppColors.text.withValues(alpha: 0.9),
             ),
@@ -326,13 +431,13 @@ class _EventAlongLine extends StatelessWidget {
           left: left,
           top: 0,
           width: TimelineChart._labelW,
-          height: TimelineChart._lineY - 2,
+          height: lineY - 2,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               label,
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               dot,
             ],
           ),
@@ -342,7 +447,7 @@ class _EventAlongLine extends StatelessWidget {
         left: left,
         top: 0,
         width: TimelineChart._labelW,
-        height: TimelineChart._lineY - 4,
+        height: lineY - 4,
         child: Column(
           children: [
             Expanded(child: Center(child: label)),
@@ -355,15 +460,15 @@ class _EventAlongLine extends StatelessWidget {
     if (compactToLine) {
       return Positioned(
         left: left,
-        top: TimelineChart._lineY + 2,
+        top: lineY + 2,
         width: TimelineChart._labelW,
-        height: TimelineChart._stackHeight - TimelineChart._lineY - TimelineChart._tickBand,
+        height: chartHeight - lineY - TimelineChart._tickBand,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             dot,
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             label,
           ],
         ),
@@ -372,13 +477,13 @@ class _EventAlongLine extends StatelessWidget {
 
     return Positioned(
       left: left,
-      top: TimelineChart._lineY + 4,
+      top: lineY + 4,
       width: TimelineChart._labelW,
-      height: TimelineChart._stackHeight - TimelineChart._lineY - TimelineChart._tickBand,
+      height: chartHeight - lineY - TimelineChart._tickBand,
       child: Column(
         children: [
           dot,
-          const SizedBox(height: 10),
+          const SizedBox(height: 7),
           Expanded(child: Center(child: label)),
         ],
       ),
@@ -397,16 +502,16 @@ class _LegendDot extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 9,
-          height: 9,
+          width: 7,
+          height: 7,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.35), blurRadius: 3)],
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.35), blurRadius: 2)],
           ),
         ),
-        const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w500)),
+        const SizedBox(width: 5),
+        Text(label, style: const TextStyle(fontSize: 8, color: AppColors.muted, fontWeight: FontWeight.w500)),
       ],
     );
   }
