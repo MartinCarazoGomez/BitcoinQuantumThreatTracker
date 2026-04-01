@@ -241,7 +241,7 @@ CUSTOM_CSS = """
     }
     .landing-stats {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 1rem;
         margin-bottom: 2.5rem;
         max-width: 900px;
@@ -1029,7 +1029,6 @@ def render_home():
         <div class="landing-stats">
             <div class="landing-stat"><div class="landing-stat-num">3</div><div class="landing-stat-label">Scenario presets</div></div>
             <div class="landing-stat"><div class="landing-stat-num">30yr</div><div class="landing-stat-label">Horizon (2026–2055)</div></div>
-            <div class="landing-stat"><div class="landing-stat-num">6</div><div class="landing-stat-label">Tabs (see bar below)</div></div>
         </div>
         <div class="landing-section-title">Navigation</div>
         <p style="text-align:center;color:#94a3b8;font-size:0.92rem;max-width:520px;margin:0 auto 0.5rem;line-height:1.55;">

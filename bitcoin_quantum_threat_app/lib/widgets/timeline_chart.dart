@@ -3,38 +3,13 @@ import 'package:flutter/material.dart';
 import '../models/timeline_event.dart';
 import '../theme/app_theme.dart';
 
-/// Left column width for lane labels — must match the year axis row spacer.
-const double _kTimelineLaneLabelWidth = 108;
-
-/// Horizontal timeline: swimlanes by category so years and titles stay readable.
+/// Vertical chronological timeline: one rail, events in year order (not swimlanes).
 class TimelineChart extends StatelessWidget {
   const TimelineChart({super.key, required this.events});
 
   final List<TimelineEvent> events;
 
-  static const double _minYear = 2016;
-  static const double _maxYear = 2040;
-
-  static const _axisTicks = [2016, 2020, 2024, 2028, 2032, 2036, 2040];
-
-  static int _laneIndex(String type) {
-    switch (type) {
-      case 'quantum':
-        return 0;
-      case 'crypto':
-        return 1;
-      case 'bitcoin':
-        return 2;
-      case 'model':
-        return 3;
-      default:
-        return 0;
-    }
-  }
-
-  static const _laneLabels = ['Quantum hardware', 'Crypto / standards', 'Bitcoin', 'Model / policy'];
-
-  Color _color(String type) {
+  static Color _colorFor(String type) {
     switch (type) {
       case 'quantum':
         return AppColors.quantum;
@@ -47,22 +22,29 @@ class TimelineChart extends StatelessWidget {
     }
   }
 
-  double _yearToX(int year, double trackWidth) {
-    final t = (year - _minYear) / (_maxYear - _minYear);
-    return t.clamp(0.0, 1.0) * trackWidth;
+  static String _typeLabel(String type) {
+    switch (type) {
+      case 'quantum':
+        return 'Quantum';
+      case 'crypto':
+        return 'Crypto';
+      case 'bitcoin':
+        return 'Bitcoin';
+      case 'model':
+        return 'Model';
+      default:
+        return type;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final byLane = List<List<TimelineEvent>>.generate(4, (_) => []);
-    for (final e in events) {
-      byLane[_laneIndex(e.type)].add(e);
-    }
-    for (final list in byLane) {
-      list.sort((a, b) => a.year.compareTo(b.year));
-    }
-
-    const laneAccent = [AppColors.quantum, AppColors.accent, AppColors.migration, AppColors.amber];
+    final sorted = List<TimelineEvent>.from(events)
+      ..sort((a, b) {
+        final y = a.year.compareTo(b.year);
+        if (y != 0) return y;
+        return a.title.compareTo(b.title);
+      });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,44 +59,37 @@ class TimelineChart extends StatelessWidget {
             _LegendDot(color: AppColors.amber, label: 'Model'),
           ],
         ),
+        const SizedBox(height: 6),
+        Text(
+          'Chronological · ${sorted.isEmpty ? '—' : '${sorted.first.year}–${sorted.last.year}'}',
+          style: TextStyle(fontSize: 11, color: AppColors.muted.withValues(alpha: 0.88)),
+        ),
         const SizedBox(height: 14),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            color: AppColors.surface.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
-          padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var lane = 0; lane < 4; lane++) ...[
-                if (lane > 0) const SizedBox(height: 8),
-                _Swimlane(
-                  label: _laneLabels[lane],
-                  labelColor: laneAccent[lane],
-                  events: byLane[lane],
-                  colorFor: _color,
-                  yearToX: _yearToX,
-                  axisTicks: _axisTicks,
+          padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
+          child: sorted.isEmpty
+              ? Text(
+                  'No events.',
+                  style: TextStyle(color: AppColors.muted.withValues(alpha: 0.9)),
+                )
+              : Column(
+                  children: [
+                    for (var i = 0; i < sorted.length; i++)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: i == sorted.length - 1 ? 0 : 12),
+                        child: _TimelineEntry(
+                          event: sorted[i],
+                          accent: _colorFor(sorted[i].type),
+                          typeLabel: _typeLabel(sorted[i].type),
+                        ),
+                      ),
+                  ],
                 ),
-              ],
-              const SizedBox(height: 6),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(width: _kTimelineLaneLabelWidth),
-                  Expanded(
-                    child: _YearAxis(
-                      minYear: _minYear,
-                      maxYear: _maxYear,
-                      ticks: _axisTicks,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
         ),
       ],
     );
@@ -132,12 +107,12 @@ class _LegendDot extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 10,
-          height: 10,
+          width: 9,
+          height: 9,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 4)],
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.35), blurRadius: 3)],
           ),
         ),
         const SizedBox(width: 6),
@@ -147,188 +122,67 @@ class _LegendDot extends StatelessWidget {
   }
 }
 
-class _Swimlane extends StatelessWidget {
-  const _Swimlane({
-    required this.label,
-    required this.labelColor,
-    required this.events,
-    required this.colorFor,
-    required this.yearToX,
-    required this.axisTicks,
-  });
-
-  final String label;
-  final Color labelColor;
-  final List<TimelineEvent> events;
-  final Color Function(String type) colorFor;
-  final double Function(int year, double trackWidth) yearToX;
-  final List<int> axisTicks;
-
-  static const double _laneHeight = 88;
-  static const double _labelWidth = _kTimelineLaneLabelWidth;
-
-  /// Horizontal gap (px) below which same-lane markers are nudged apart.
-  static const double _minMarkerGap = 72;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: _labelWidth,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 8, right: 8),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                height: 1.25,
-                color: labelColor.withValues(alpha: 0.98),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, c) {
-              final trackW = c.maxWidth;
-              final nudge = _stackNudges(events, trackW);
-              return SizedBox(
-                height: _laneHeight,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      top: _laneHeight * 0.58,
-                      child: Container(
-                        height: 1,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.white.withValues(alpha: 0.02),
-                              Colors.white.withValues(alpha: 0.14),
-                              Colors.white.withValues(alpha: 0.02),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    for (final y in axisTicks)
-                      Positioned(
-                        left: yearToX(y, trackW),
-                        top: 2,
-                        bottom: 10,
-                        child: Container(
-                          width: 1,
-                          color: AppColors.muted.withValues(alpha: 0.12),
-                        ),
-                      ),
-                    for (var i = 0; i < events.length; i++)
-                      _EventMarker(
-                        event: events[i],
-                        trackWidth: trackW,
-                        color: colorFor(events[i].type),
-                        yearToX: yearToX,
-                        stackNudgeY: nudge[i],
-                      ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Slight vertical offsets when two events in the same lane map to nearby x positions.
-  List<double> _stackNudges(List<TimelineEvent> sorted, double trackW) {
-    if (sorted.isEmpty) return [];
-    final out = List<double>.filled(sorted.length, 0);
-    var lastX = -1e9;
-    var stack = 0;
-    for (var i = 0; i < sorted.length; i++) {
-      final cx = yearToX(sorted[i].year, trackW);
-      if (i > 0 && (cx - lastX).abs() < _minMarkerGap) {
-        stack++;
-        out[i] = (stack.isOdd ? 1 : -1) * (10.0 + (stack - 1) * 4);
-      } else {
-        stack = 0;
-        out[i] = 0;
-      }
-      lastX = cx;
-    }
-    return out;
-  }
-}
-
-class _EventMarker extends StatelessWidget {
-  const _EventMarker({
+class _TimelineEntry extends StatelessWidget {
+  const _TimelineEntry({
     required this.event,
-    required this.trackWidth,
-    required this.color,
-    required this.yearToX,
-    required this.stackNudgeY,
+    required this.accent,
+    required this.typeLabel,
   });
 
   final TimelineEvent event;
-  final double trackWidth;
-  final Color color;
-  final double Function(int year, double trackWidth) yearToX;
-  final double stackNudgeY;
+  final Color accent;
+  final String typeLabel;
+
+  static const _railW = 44.0;
+  static const _node = 16.0;
+  static const _dotTop = 18.0;
 
   @override
   Widget build(BuildContext context) {
-    final cx = yearToX(event.year, trackWidth);
-    const markerW = 104.0;
-    final left = (cx - markerW / 2).clamp(0.0, trackWidth - markerW);
+    final line = AppColors.muted.withValues(alpha: 0.32);
 
-    return Positioned(
-      left: left,
-      top: stackNudgeY,
-      width: markerW,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            '${event.year}',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: color,
-              height: 1.1,
-              letterSpacing: 0.2,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 2.5),
-              boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8, offset: const Offset(0, 2)),
+          SizedBox(
+            width: _railW,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  left: 21,
+                  top: 0,
+                  bottom: 0,
+                  child: Container(width: 2, color: line),
+                ),
+                Positioned(
+                  left: 13,
+                  top: _dotTop,
+                  child: Container(
+                    width: _node,
+                    height: _node,
+                    decoration: BoxDecoration(
+                      color: accent,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.92), width: 2.5),
+                      boxShadow: [
+                        BoxShadow(color: accent.withValues(alpha: 0.45), blurRadius: 8, offset: const Offset(0, 2)),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 5),
-          Text(
-            event.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 10.5,
-              height: 1.3,
-              fontWeight: FontWeight.w500,
-              color: AppColors.text.withValues(alpha: 0.88),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _EventCard(
+              year: event.year,
+              title: event.title,
+              detail: event.detail,
+              accent: accent,
+              typeLabel: typeLabel,
             ),
           ),
         ],
@@ -337,71 +191,94 @@ class _EventMarker extends StatelessWidget {
   }
 }
 
-class _YearAxis extends StatelessWidget {
-  const _YearAxis({
-    required this.minYear,
-    required this.maxYear,
-    required this.ticks,
+class _EventCard extends StatelessWidget {
+  const _EventCard({
+    required this.year,
+    required this.title,
+    required this.detail,
+    required this.accent,
+    required this.typeLabel,
   });
 
-  final double minYear;
-  final double maxYear;
-  final List<int> ticks;
+  final int year;
+  final String title;
+  final String detail;
+  final Color accent;
+  final String typeLabel;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, c) {
-        final w = c.maxWidth;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Year',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppColors.muted.withValues(alpha: 0.85),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        color: AppColors.bg.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          left: BorderSide(color: accent.withValues(alpha: 0.85), width: 3),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          right: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$year',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: accent,
+                    letterSpacing: 0.3,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Container(height: 1, color: AppColors.amber.withValues(alpha: 0.28)),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 24,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  for (final y in ticks)
-                    Positioned(
-                      left: ((y - minYear) / (maxYear - minYear)) * w - 20,
-                      width: 40,
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 1,
-                            height: 5,
-                            color: AppColors.muted.withValues(alpha: 0.35),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '$y',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.muted.withValues(alpha: 0.95),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  typeLabel,
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: accent.withValues(alpha: 0.95)),
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              height: 1.3,
+              color: AppColors.text,
             ),
-          ],
-        );
-      },
+          ),
+          const SizedBox(height: 6),
+          Text(
+            detail,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.4,
+              color: AppColors.muted.withValues(alpha: 0.92),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

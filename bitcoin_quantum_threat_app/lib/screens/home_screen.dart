@@ -103,8 +103,6 @@ class HomeScreen extends StatelessWidget {
             Expanded(child: _GlanceStat(value: '3', caption: 'Scenario presets', icon: Icons.layers_outlined)),
             const SizedBox(width: 12),
             Expanded(child: _GlanceStat(value: '30 yr', caption: 'Horizon to 2055', icon: Icons.date_range_outlined)),
-            const SizedBox(width: 12),
-            Expanded(child: _GlanceStat(value: '6', caption: 'Sections in app', icon: Icons.apps_outlined)),
           ],
         ),
         const SizedBox(height: 28),
